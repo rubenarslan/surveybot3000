@@ -1,0 +1,402 @@
+---
+title: "Untitled"
+author: "Ruben Arslan"
+date: "2023-10-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+todo:
+manifeste rs aus rels berechnen
+
+
+## Load data
+```{r}
+load("../gocd2/data/cleaned.rdata")
+
+library(tidyverse)
+library(labelled)
+
+saveRDS(s2_initial, file = "s2_initial.rds")
+s2_initial %>% names()
+
+scales <- s2_initial %>% select(narq:ecr_anx) %>% map(attributes)
+likert_items <- s2_initial %>% select(bfi_open_1, narq_5, narq_3, bfi_agree_2, pvd_infectability_1, bfi_consc_2r, soi_r_attitude_6r, asendorpf_shyness_4r, bfi_neuro_2r, bfi_open_2, bfi_extra_1, bfi_extra_3, bfi_agree_3r, soi_r_attitude_4, narq_15, bfi_consc_3, soi_r_attitude_5, narq_2, asendorpf_shyness_2, bfi_agree_1r, bfi_consc_1, narq_11, bfi_neuro_1, bfi_extra_2r, bfi_neuro_3, narq_18, bfi_open_3, asendorpf_shyness_5, bfi_extra_4, narq_16, bfi_agree_4, bfi_consc_9r, bfi_neuro_4, bfi_open_4, bfi_extra_5r, bfi_agree_5, narq_1, bfi_consc_4r, bfi_neuro_5r, bfi_open_5, bfi_extra_6, narq_14, bfi_agree_6r, bfi_consc_5, asendorpf_shyness_3r, pvd_germ_aversion_2, pvd_germ_aversion_3R, bfi_neuro_8, pvd_infectability_3R, pvd_germ_aversion_1, feel_safe_walking_dark, feel_safe_violent_crime, feel_safe_sexual_assault, feel_safe_theft, bfi_open_6, narq_17, bfi_extra_7r, bfi_agree_7, narq_4, asendorpf_shyness_1, bfi_consc_6, bfi_neuro_6r, bfi_open_7r, narq_13, bfi_extra_8, bfi_agree_8r, narq_6, bfi_consc_7, bfi_neuro_7, narq_7, bfi_open_8, narq_12, bfi_open_9r, bfi_agree_9, narq_8, bfi_consc_8r, narq_9, narq_10, bfi_open_10, pvd_infectability_2, pvd_germ_aversion_4R, spms_partner_1, spms_partner_2, spms_partner_3R, satisfaction_sexual_intercourse, satisfaction_single_life, investment_potential_partner, quantity_potential_partner, relationship_importance, relationship_importance_partner, partner_attractiveness_longterm, partner_attractiveness_shortterm, partner_attractiveness_face, partner_attractiveness_body, attractiveness_warmth, partner_attractiveness_trust, partner_sexiness, partner_strength, partner_feel_safe, spms_self_1, spms_self_2, spms_self_3R, soi_r_desire_9, soi_r_desire_7, soi_r_desire_8, relationship_problems, relationship_satisfaction_overall, relationship_conflict, relationship_satisfaction_2, relationship_satisfaction_3, alternatives_1, alternatives_2, alternatives_3, alternatives_4, alternatives_5, alternatives_6, investment_1, investment_2, investment_3, commitment_1, commitment_2, commitment_3, communal_strength_1, communal_strength_2R, communal_strength_3, communal_strength_4, sexual_communal_strength_1, sexual_communal_strength_2, sexual_communal_strength_3, ecr_avo_1R, ecr_anx_1, ecr_avo_2, ecr_anx_2, ecr_anx_3, ecr_avo_3R, ecr_avo_4, ecr_anx_4R, ecr_avo_5R, ecr_anx_5, ecr_avo_6, ecr_anx_6)
+
+
+item_table <- rio::import("https://docs.google.com/spreadsheets/d/1apYY4LZO05plk8jr-EVQUQfLWW2fgBfMrX2ntmPEMdc/edit#gid=483254913", format = "xlsx")
+
+var_label(likert_items$soi_r_desire_8) <- "Wie oft empfinden Sie sexuelle Erregung im Kontakt mit Personen, mit denen Sie zur Zeit keine feste Beziehung führen?"
+
+var_label(likert_items$commitment_2) <- "Ich orientiere mich an einer langfristigen Zukunft unserer Partnerschaft (z.B. stelle mir unser Zusammensein in einigen Jahren vor, mache Pläne für die Zukunft)."
+
+var_label(likert_items$narq_1) <- "Ich bin großartig."
+
+library(codebook)
+likert_items <- likert_items %>% 
+    mutate_at(vars(matches("\\d[rR]$")), reverse_labelled_values)
+
+correlations <- likert_items %>% cor(use = 'p') %>% 
+  as.data.frame() %>% 
+  as_tibble(rownames = "item") %>% 
+  pivot_longer(-item) %>% 
+  rename(item_1 = item, item_2 = name, correlation = value) %>% 
+  filter(correlation != 1, !is.na(correlation))
+
+correlations %>% 
+  rio::export("item_correlations.csv")
+
+correlations %>% select(-correlation) %>% 
+  rio::export("possible_item_pairs.csv")
+
+likert_items_with_labels <- 
+  likert_items %>% var_label() %>% 
+  enframe("item_name", "label") %>% 
+  unnest(label) %>% 
+  left_join(item_table %>% select(label, label_en, showif), by = c("label" = "label"))
+
+likert_items_with_labels %>% 
+  rio::export("gocd2_item_labels.csv")
+```
+
+
+
+## Test
+```{r}
+llm0710 <- rio::import("ruben-test-item-similarity-20230710-164559.csv")
+llm1018 <- rio::import("ruben-test-item-similarity-20231018-122504.csv")
+llm0809 <- rio::import("ruben-test-ItemSimilarityTraining-20230809-trial106.csv")
+
+names(llm0710) <- c("row", "item_1_label", "item_2_label", "similarity_0710")
+names(llm1018) <- c("row", "item_1_label", "item_2_label", "similarity_1018")
+names(llm0809) <- c("row", "item_1_label", "item_2_label", "similarity_0809")
+
+llm0710 <- llm0710 %>% 
+  mutate(
+    item_1_label = str_replace_all(item_1_label, '""', '"'),
+    item_2_label = str_replace_all(item_2_label, '""', '"')
+  )
+
+llm1018 <- llm1018 %>% 
+  mutate(
+    item_1_label = str_replace_all(item_1_label, '""', '"'),
+    item_2_label = str_replace_all(item_2_label, '""', '"')
+  )
+
+llm0809 <- llm0809 %>% 
+  mutate(
+    item_1_label = str_replace_all(item_1_label, '""', '"'),
+    item_2_label = str_replace_all(item_2_label, '""', '"')
+  )
+
+# correlations %>% 
+#   full_join(likert_items_with_labels %>% 
+#               select(item_name, item_1_label = label_en), 
+#             by = c("item_1" = "item_name")) %>% 
+#   anti_join(llm0710, by = c("item_1_label")) %>% 
+#   select(item_1_label) %>% 
+#   View()
+
+correlations_llm <- correlations %>% 
+  full_join(likert_items_with_labels %>% 
+              select(item_name, item_1_label = label_en), 
+            by = c("item_1" = "item_name")) %>% 
+  full_join(likert_items_with_labels %>% 
+              select(item_name, item_2_label = label_en), 
+            by = c("item_2" = "item_name")) %>% 
+  full_join(llm0710, by = c("item_1_label", "item_2_label")) %>% 
+  full_join(llm1018, by = c("item_1_label", "item_2_label")) %>% 
+  full_join(llm0809, by = c("item_1_label", "item_2_label"))
+
+correlations_llm %>% drop_na() %>% nrow()
+correlations_llm %>% 
+  select(correlation, similarity_0710, similarity_1018, similarity_0809) %>% 
+  cor(use = 'p')
+
+
+correlations_llm %>% 
+  filter(!str_detect(item_1, "^bfi_"), !str_detect(item_2, "^bfi_")) %>% 
+  filter(!str_detect(item_1, "^narq"), !str_detect(item_2, "^narq_")) %>% 
+  filter(!str_detect(item_1, "^asendorpf"), !str_detect(item_2, "^asendorpf")) %>% 
+  select(correlation, similarity_0710, similarity_1018, similarity_0809) %>% 
+  cor(use = 'p')
+
+
+correlations_llm %>% 
+  select(correlation, similarity_0710, similarity_1018, similarity_0809) %>% 
+  mutate_all(abs) %>% 
+  cor(use = 'p')
+
+ggplot(correlations_llm, aes(correlation, similarity_0710)) +
+  geom_point(alpha = 0.05)
+ggplot(correlations_llm, aes(correlation, similarity_1018)) +
+  geom_point(alpha = 0.2)
+ggplot(correlations_llm, aes(correlation, similarity_0809)) +
+  geom_point(alpha = 0.2)
+```
+
+
+```{r}
+library(plotly) 
+correlations_llm %>% 
+  # filter(str_detect(item_1, "bfi_agree"), str_detect(item_2, "bfi_agree")) %>% 
+  mutate(correlation = round(correlation, 2)) %>% 
+  mutate(similarity_0710 = round(similarity_0710, 2)) %>% 
+  mutate(items = str_c(item_1_label, "\n", item_2_label)) %>% 
+ggplot(., aes(correlation, similarity_0710, label = items)) + 
+  geom_point() -> p
+
+ggplotly(p)
+```
+
+```{r}
+correlations_llm %>% 
+  mutate(correlation = round(correlation, 2)) %>% 
+  mutate(similarity_1018 = round(similarity_1018, 2)) %>% 
+  mutate(items = str_c(item_1_label, "\n", item_2_label)) %>% 
+ggplot(., aes(correlation, similarity_1018, label = items)) + 
+  geom_point() -> p
+
+ggplotly(p)
+```
+
+```{r}
+correlations_llm %>% 
+  mutate(correlation = round(correlation, 2)) %>% 
+  mutate(similarity_0809 = round(similarity_0809, 2)) %>% 
+  mutate(items = str_c(item_1_label, "\n", item_2_label)) %>% 
+ggplot(., aes(correlation, similarity_0809, label = items)) + 
+  geom_point() -> p
+
+ggplotly(p)
+```
+
+
+
+## Scale level
+```{r}
+library(lavaan)
+library(corrr)
+tibble <- likert_items %>% cor(use = 'p') %>% as_cordf() %>% 
+  shave() %>%
+  stretch() %>% 
+  drop_na()
+
+empirical_cors <- tibble %>% as.data.frame() |> 
+  igraph::graph_from_data_frame(directed = FALSE) |> 
+  igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
+diag(empirical_cors) <- 1
+
+# empirical_cors2 <- likert_items %>% cor(use = 'p')
+# empirical_cors %>% as_cordf() %>% stretch() %>% left_join(empirical_cors2 %>% as_cordf() %>% stretch(), by = c("x", "y")) %>% filter(round(r.x,2) != round(r.y, 2))
+
+
+empirical_cors[str_detect(rownames(empirical_cors), "\\d[rR]$"), ] <- 
+  empirical_cors[str_detect(rownames(empirical_cors), "\\d[rR]$"), ] * -1
+empirical_cors[, str_detect(colnames(empirical_cors), "\\d[rR]$")] <- 
+  empirical_cors[, str_detect(colnames(empirical_cors), "\\d[rR]$")] * -1
+empirical_cors["bfi_agree_3r", "bfi_agree_1r"]
+empirical_cors["bfi_agree_2", "bfi_agree_1r"]
+#> This is lavaan 0.6-14
+#> lavaan is FREE software! Please report any bugs.
+lcor <- cfa("bfi_neuro =~ bfi_neuro_2r + bfi_neuro_1 + bfi_neuro_3 + bfi_neuro_4 + bfi_neuro_5r + bfi_neuro_8 + bfi_neuro_6r + bfi_neuro_7
+            spms_self =~ spms_self_1 + spms_self_2 + spms_self_3R", 
+            sample.cov = empirical_cors, sample.nobs = 1000)
+summary(lcor, standardized = T, ci=T)
+semTools::compRelSEM(lcor)
+
+
+tibble <- llm1018 %>% 
+  full_join(likert_items_with_labels %>% 
+              select(item_name_1 = item_name, item_1_label = label_en)) %>% 
+  full_join(likert_items_with_labels %>% 
+              select(item_name_2 = item_name, item_2_label = label_en)) %>% 
+  select(x = item_name_1, y = item_name_2, r = similarity_1018) %>% 
+  drop_na()
+
+cors <- tibble %>% as.data.frame() |> 
+  igraph::graph_from_data_frame(directed = FALSE) |> 
+  igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
+diag(cors) <- 1
+
+
+# library(corrr)
+# cors <- retract(tibble) %>% as_cordf() %>% shave(upper = F) %>% 
+#   as_matrix()
+# cors[lower.tri(cors)] <- t(cors)[lower.tri(cors)]
+# diag(cors) <- 1
+
+cors[str_detect(rownames(cors), "\\d[rR]$"), ] <- 
+  cors[str_detect(rownames(cors), "\\d[rR]$"), ] * -1
+cors[, str_detect(colnames(cors), "\\d[rR]$")] <- 
+  cors[, str_detect(colnames(cors), "\\d[rR]$")] * -1
+cors["bfi_agree_3r", "bfi_agree_1r"]
+cors["bfi_agree_2", "bfi_agree_3r"]
+cors["bfi_agree_2", "bfi_agree_1r"]
+library(semTools)
+  
+lcor <- cfa("bfi_neuro =~ bfi_neuro_2r + bfi_neuro_1 + bfi_neuro_3 + bfi_neuro_4 +  + bfi_neuro_8 + bfi_neuro_6r + bfi_neuro_7
+            spms_self =~ spms_self_1 + spms_self_2 + spms_self_3R", 
+            sample.cov = cors, sample.nobs = 1000)
+semTools::compRelSEM(lcor)
+summary(lcor, standardized = T, ci=T)
+```
+
+
+```{r}
+scales$relationship_satisfaction <- NULL
+for(i in seq_along(scales)) {
+  scale <- names(scales)[i]
+  items <- scales[[i]]$scale_item_names
+  scales[[i]]$lvn <- paste(scale, " =~ ", paste(items, collapse = " + "))
+}
+model <- scales %>% map(~ .$lvn) %>% paste(collapse = "\n")
+
+lcor_real <- cfa(model, 
+            sample.cov = empirical_cors, sample.nobs = 1000)
+rels_real <- semTools::compRelSEM(lcor_real)
+summary(lcor_real)
+
+lcor_llm <- cfa(model, 
+            sample.cov = cors, sample.nobs = 1000)
+rels_llm <- semTools::compRelSEM(lcor_llm)
+summary(lcor)
+
+rels <- data.frame(scale = names(rels_llm),
+              rel_llm = rels_llm,
+              rel_real = rels_real)
+
+cor.test(rels_llm, rels_real)
+lm(rels_llm ~ rels_real)
+ggplot(mapping = aes(x = rels_llm, y = rels_real, label = names(rels_llm))) +
+  geom_abline(linetype = "dashed") +
+  geom_point() +
+  ggrepel::geom_text_repel() +
+  coord_fixed(xlim = c(0,1), ylim = c(0,1)) 
+
+estimated_rs <- standardizedsolution(lcor_real) %>% 
+  left_join(standardizedsolution(lcor_llm), by = c("lhs", "op", "rhs")) %>% 
+  select(lhs, op, rhs, est.std.x, est.std.y) %>% 
+  left_join(rels %>% select(scale, rel_llm_lhs = rel_llm, rel_real_lhs = rel_real), by = c("lhs" = "scale")) %>% 
+  left_join(rels %>% select(scale, rel_llm_rhs = rel_llm, rel_real_rhs = rel_real), by = c("rhs" = "scale"))
+
+lv_rs <- estimated_rs %>% filter(op == "~~", !str_detect(lhs, "[0-9]"), 
+                        !str_detect(rhs, "[0-9]")) %>% 
+  filter(lhs != rhs) %>% 
+  mutate(est_manifest_llm = est.std.y * sqrt(rel_llm_lhs * rel_llm_rhs)) %>% 
+  mutate(est_manifest_real = est.std.x * sqrt(rel_real_lhs * rel_real_rhs))
+
+
+cor.test(lv_rs$est.std.x, lv_rs$est.std.y)
+cor.test(lv_rs$est_manifest_llm, lv_rs$est_manifest_real)
+lv_rs %>% 
+  filter(lhs != "ecr_avo", rhs != "ecr_avo") %>% 
+  { 
+    cor.test(.$est.std.x, .$est.std.y)
+    }
+cor.test(abs(lv_rs$est.std.x), abs(lv_rs$est.std.y))
+
+qplot(lv_rs$est.std.y, lv_rs$est.std.x)
+
+lm(est.std.y ~ est.std.x, lv_rs)
+lm(est.std.x ~ est.std.y, lv_rs)
+
+
+estimated_rs <- parameterestimates(lcor_real) %>% 
+  left_join(parameterestimates(lcor_llm), by = c("lhs", "op", "rhs")) %>% 
+  select(lhs, op, rhs, est.x, est.y)
+
+lv_rs <- estimated_rs %>% filter(op == "~~", !str_detect(lhs, "[0-9]"), 
+                        !str_detect(rhs, "[0-9]")) %>% 
+  filter(lhs != rhs)
+
+cor.test(lv_rs$est.x, lv_rs$est.y)
+cor.test(abs(lv_rs$est.x), abs(lv_rs$est.y))
+
+qplot(lv_rs$est.y, lv_rs$est.x)
+```
+
+
+
+```{r}
+lv_rs %>% 
+  mutate(correlation = round(est.x, 2)) %>% 
+  mutate(llm_based = round(est.y, 2)) %>% 
+  mutate(scales = str_c(lhs, "\n", rhs)) %>% 
+ggplot(., aes(correlation, llm_based, label = scales)) + 
+  geom_abline(linetype = "dashed") +
+  geom_point() +
+  coord_fixed(xlim = c(-1,1), ylim = c(-1,1)) -> p
+
+ggplotly(p)
+```
+
+
+## Formative
+doesn't work at all
+```{r}
+scales$relationship_satisfaction <- NULL
+for(i in seq_along(scales)) {
+  scale <- names(scales)[i]
+  items <- scales[[i]]$scale_item_names
+  scales[[i]]$lvn <- paste(scale, " <~ ", paste(items, collapse = " + "))
+}
+model <- scales %>% map(~ .$lvn) %>% paste(collapse = "\n")
+
+form_lcor_real <- cfa(model, 
+            sample.cov = empirical_cors, sample.nobs = 1000)
+rels_real <- semTools::compRelSEM(form_lcor_real)
+summary(lcor_real)
+
+form_lcor_llm <- cfa(model, 
+            sample.cov = cors, sample.nobs = 1000)
+rels_llm <- semTools::compRelSEM(form_lcor_llm)
+summary(lcor)
+
+cor.test(rels_llm, rels_real)
+lm(rels_llm ~ rels_real)
+ggplot(mapping = aes(x = rels_llm, y = rels_real, label = names(rels_llm))) +
+  geom_point() +
+  ggrepel::geom_text_repel()
+
+estimated_rs <- standardizedsolution(form_lcor_real) %>% 
+  left_join(standardizedsolution(form_lcor_llm), by = c("lhs", "op", "rhs")) %>% 
+  select(lhs, op, rhs, est.std.x, est.std.y)
+
+lv_rs <- estimated_rs %>% filter(op == "~~", !str_detect(lhs, "[0-9]"), 
+                        !str_detect(rhs, "[0-9]")) %>% 
+  filter(lhs != rhs)
+
+cor.test(lv_rs$est.std.x, lv_rs$est.std.y)
+cor.test(abs(lv_rs$est.std.x), abs(lv_rs$est.std.y))
+
+qplot(lv_rs$est.std.y, lv_rs$est.std.x)
+
+lm(est.std.y ~ est.std.x, lv_rs)
+lm(est.std.x ~ est.std.y, lv_rs)
+```
+
+
+
+```{r}
+lv_rs %>% 
+  mutate(correlation = round(est.std.x, 2)) %>% 
+  mutate(llm_based = round(est.std.y, 2)) %>% 
+  mutate(scales = str_c(lhs, "\n", rhs)) %>% 
+ggplot(., aes(correlation, llm_based, label = scales)) + 
+  geom_abline(linetype = "dashed") +
+  geom_point() +
+  coord_fixed(xlim = c(-1,1), ylim = c(-1,1)) -> p
+
+ggplotly(p)
+```
+
+
+```{r}
+holdout <- feather::read_feather("ignore.data-holdout-set-item-similarity-20230710-164559")
+
+```
+
