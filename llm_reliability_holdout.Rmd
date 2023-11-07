@@ -1,0 +1,141 @@
+---
+title: "LLM Reliability"
+author: "Ruben Arslan"
+date: "2023-11-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+library(lavaan)
+library(semTools)
+library(plotly)
+```
+
+```{r}
+holdout <- arrow::read_feather("ignore.data-holdout-set-item-similarity-20230710-164559")
+llm_holdout_meta <- arrow::read_feather("ignore.llmdata-holdout-set-item-similarity-20230710-164559.feather")
+holdout_real <- holdout %>% 
+  select(ItemStemIdA, ItemStemIdB, Pearson) %>% 
+  left_join(llm_holdout_meta %>% select(ItemStemIdA = ItemStemId, VariableA = Variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>% 
+  left_join(llm_holdout_meta %>% select(ItemStemIdB = ItemStemId, VariableB = Variable, InstrumentB = instrument, ScaleB = scale_0, SubscaleB = scale_1))
+
+holdout_llm <- holdout %>% 
+  select(ItemStemIdA, ItemStemIdB, CosineSimilarity) %>% 
+  left_join(llm_holdout_meta %>% select(ItemStemIdA = ItemStemId, VariableA = Variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>% 
+  left_join(llm_holdout_meta %>% select(ItemStemIdB = ItemStemId, VariableB = Variable, InstrumentB = instrument, ScaleB = scale_0, SubscaleB = scale_1))
+
+cors_llm <- holdout_llm %>% 
+  drop_na(InstrumentA, ScaleA, InstrumentB, ScaleB) %>% 
+  select(x = VariableA, y = VariableB, r = CosineSimilarity) %>% 
+  as.data.frame() |> 
+  igraph::graph_from_data_frame(directed = FALSE) |> 
+  igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
+diag(cors_llm) <- 1
+
+cors_real <- holdout_real %>% 
+  drop_na(InstrumentA, ScaleA, InstrumentB, ScaleB) %>% 
+  select(x = VariableA, y = VariableB, r = Pearson) %>% 
+  as.data.frame() |> 
+  igraph::graph_from_data_frame(directed = FALSE) |> 
+  igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
+diag(cors_real) <- 1
+
+scales <- llm_holdout_meta %>% 
+  drop_na(instrument, scale_0) %>% 
+  mutate(scale = str_replace_all(paste(instrument, scale_0), "[^a-zA-Z_0-9]", "_")) %>% 
+  group_by(scale) %>% 
+  summarise(
+    items = list(Variable),
+    lvn = paste(first(scale), " =~ ", paste(Variable, collapse = " + "))) %>% 
+  drop_na()
+
+random_scales <- list()
+for(i in 1:25) {
+  n_items <- rpois(1, 10)
+  random_scales[[i]] <- llm_holdout_meta %>% 
+    drop_na(instrument, scale_0) %>% 
+    sample_n(n_items) %>%  
+    mutate(scale = paste0("random", i)) %>% 
+  group_by(scale) %>% 
+  summarise(
+    items = list(Variable),
+    lvn = paste(first(scale), " =~ ", paste(Variable, collapse = " + "))) %>% 
+  drop_na()
+}
+random_scales <- bind_rows(random_scales)
+scales <- bind_rows(scales, random_scales)
+
+find_reverse_items <- function(rs) {
+  # Calculate the mean correlation for each item, excluding the item's correlation with itself.
+  mean_correlations <- apply(rs, 1, function(x) mean(x[-which(x == 1)]))
+
+  # Identify items with negative mean correlation
+  # You may adjust the threshold according to your specific criteria.
+  threshold <- -0.01
+  reverse_keyed_items <- names(which(mean_correlations < threshold))
+
+  # Now you know which items are likely to be reverse-coded.  
+  reverse_keyed_items
+}
+
+find_reverse_items_by_first_item <- function(rs) {
+  # negatively correlated with first item
+  items <- rs[-1, 1]
+  reverse_keyed_items <- names(items)[which(items < 0)]
+  reverse_keyed_items
+}
+
+reverse_items <- function(rs, reverse_keyed_items) {
+  # Reverse the correlations for the reverse-keyed items
+  for (item in reverse_keyed_items) {
+    # Get the index of the reverse-keyed item
+    item_index <- which(rownames(rs) == item)
+    
+    # Reverse the correlations
+    rs[item_index, ] <- rs[item_index, ] * -1
+    rs[, item_index] <- rs[, item_index] * -1
+    
+    # Since the diagonal is the correlation of the item with itself, set it back to 1
+    rs[item_index, item_index] <- 1
+  }
+  rs
+}
+
+
+scales <- scales %>% 
+  rowwise() %>% 
+  mutate(r_real = list(cors_real[items, items]),
+         r_llm = list(cors_llm[items, items])) %>% 
+  mutate(reverse_items = list(find_reverse_items_by_first_item(r_real)),
+         r_real_rev = list(reverse_items(r_real, reverse_items)),
+         r_llm_rev = list(reverse_items(r_llm, reverse_items))) %>% 
+  mutate(
+    cfa_real = list(cfa(lvn, sample.cov = r_real_rev, sample.nobs = 1000)),
+    rel_real = semTools::compRelSEM(cfa_real)) %>%
+  mutate(
+    cfa_llm = list(cfa(lvn, sample.cov = r_llm_rev, sample.nobs = 1000)),
+    rel_llm = semTools::compRelSEM(cfa_llm))
+
+scales <- scales %>% filter(between(as.vector(rel_llm), 0, 1)) %>% filter(between(as.vector(rel_real), 0, 1))
+cor.test(scales$rel_llm, scales$rel_real)
+scales %>% filter(scale == "LOT_Optimism") %>% pull(cfa_real) %>% .[[1]] %>% summary
+```
+
+
+```{r}
+scales %>% 
+  mutate(rel_real = round(rel_real, 2)) %>% 
+  mutate(rel_llm = round(rel_llm, 2)) %>% 
+ggplot(., aes(rel_real, rel_llm, label = scale)) + 
+  geom_abline(linetype = "dashed") +
+  geom_point() +
+  coord_fixed(xlim = c(0,1), ylim = c(0,1)) -> p
+
+ggplotly(p)
+```
