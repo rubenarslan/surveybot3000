@@ -56,7 +56,7 @@ scales <- llm_holdout_meta %>%
   drop_na()
 
 random_scales <- list()
-for(i in 1:25) {
+for(i in 1:100) {
   n_items <- rpois(1, 10)
   random_scales[[i]] <- llm_holdout_meta %>% 
     drop_na(instrument, scale_0) %>% 
@@ -124,7 +124,150 @@ scales <- scales %>%
 
 scales <- scales %>% filter(between(as.vector(rel_llm), 0, 1)) %>% filter(between(as.vector(rel_real), 0, 1))
 cor.test(scales$rel_llm, scales$rel_real)
-scales %>% filter(scale == "LOT_Optimism") %>% pull(cfa_real) %>% .[[1]] %>% summary
+# scales %>% filter(scale == "LOT_Optimism") %>% pull(cfa_real) %>% .[[1]] %>% summary
+```
+
+
+
+```{r}
+broom::tidy(cor.test(holdout$CosineSimilarity, holdout$Pearson))
+holdout %>% 
+  mutate(items = str_c(ItemStemTextA, "\n", ItemStemTextB)) %>% 
+ggplot(., aes(CosineSimilarity, Pearson, label = items)) + 
+  geom_abline(linetype = "dashed") +
+  geom_point(size = 0.1, alpha = 0.1) +
+  scale_color_viridis_d(guide = "none", end = 0.8) +
+  ylab("Actual correlation") +
+  theme_bw() +
+  xlab("LLM cosine similarity") +
+  ggtitle("Predicting correlations from LLMs, r = 0.7") +
+  guides(color = "none") +
+  coord_fixed(xlim = c(-1,1), ylim = c(-1,1)) -> p
+
+p
+ggplotly(p)
+```
+
+
+```{r}
+scales %>% 
+  mutate(rel_real = round(rel_real, 2)) %>% 
+  mutate(rel_llm = round(rel_llm, 2)) %>% 
+ggplot(., aes(rel_real, rel_llm, label = scale, color  =  str_detect(scale, "random"))) + 
+  geom_abline(linetype = "dashed") +
+  geom_point() +
+  scale_color_viridis_d(guide = "none", end = 0.8) +
+  xlab("Actual reliability") +
+  ylab("LLM-estimated reliability") +
+  guides(color = "none") +
+  coord_fixed(xlim = c(0,1), ylim = c(0,1)) -> p
+
+ggplotly(p)
+```
+
+
+## Subscales
+```{r}
+cors_llm <- holdout_llm %>% 
+  mutate(ScaleA = coalesce(str_c(ScaleA, SubscaleA), ScaleA)) %>% 
+  mutate(ScaleB = coalesce(str_c(ScaleB, SubscaleB), ScaleB)) %>% 
+  drop_na(InstrumentA, ScaleA, InstrumentB, ScaleB) %>% 
+  select(x = VariableA, y = VariableB, r = CosineSimilarity) %>% 
+  as.data.frame() |> 
+  igraph::graph_from_data_frame(directed = FALSE) |> 
+  igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
+diag(cors_llm) <- 1
+
+cors_real <- holdout_real %>% 
+  mutate(ScaleA = coalesce(str_c(ScaleA, SubscaleA), ScaleA)) %>% 
+  mutate(ScaleB = coalesce(str_c(ScaleB, SubscaleB), ScaleB)) %>% 
+  drop_na(InstrumentA, ScaleA, InstrumentB, ScaleB) %>% 
+  select(x = VariableA, y = VariableB, r = Pearson) %>% 
+  as.data.frame() |> 
+  igraph::graph_from_data_frame(directed = FALSE) |> 
+  igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
+diag(cors_real) <- 1
+
+scales <- llm_holdout_meta %>% 
+  mutate(scale_0 = coalesce(str_c(scale_0, scale_1), scale_0)) %>% 
+  drop_na(instrument, scale_0) %>% 
+  mutate(scale = str_replace_all(paste(instrument, scale_0), "[^a-zA-Z_0-9]", "_")) %>% 
+  group_by(scale) %>% 
+  summarise(
+    items = list(Variable),
+    lvn = paste(first(scale), " =~ ", paste(Variable, collapse = " + "))) %>% 
+  drop_na()
+
+random_scales <- list()
+for(i in 1:30) {
+  n_items <- rpois(1, 10)
+  random_scales[[i]] <- llm_holdout_meta %>% 
+    drop_na(instrument, scale_0) %>% 
+    sample_n(n_items) %>%  
+    mutate(scale = paste0("random", i)) %>% 
+  group_by(scale) %>% 
+  summarise(
+    items = list(Variable),
+    lvn = paste(first(scale), " =~ ", paste(Variable, collapse = " + "))) %>% 
+  drop_na()
+}
+random_scales <- bind_rows(random_scales)
+scales <- bind_rows(scales, random_scales)
+
+find_reverse_items <- function(rs) {
+  # Calculate the mean correlation for each item, excluding the item's correlation with itself.
+  mean_correlations <- apply(rs, 1, function(x) mean(x[-which(x == 1)]))
+
+  # Identify items with negative mean correlation
+  # You may adjust the threshold according to your specific criteria.
+  threshold <- -0.01
+  reverse_keyed_items <- names(which(mean_correlations < threshold))
+
+  # Now you know which items are likely to be reverse-coded.  
+  reverse_keyed_items
+}
+
+find_reverse_items_by_first_item <- function(rs) {
+  # negatively correlated with first item
+  items <- rs[-1, 1]
+  reverse_keyed_items <- names(items)[which(items < 0)]
+  reverse_keyed_items
+}
+
+reverse_items <- function(rs, reverse_keyed_items) {
+  # Reverse the correlations for the reverse-keyed items
+  for (item in reverse_keyed_items) {
+    # Get the index of the reverse-keyed item
+    item_index <- which(rownames(rs) == item)
+    
+    # Reverse the correlations
+    rs[item_index, ] <- rs[item_index, ] * -1
+    rs[, item_index] <- rs[, item_index] * -1
+    
+    # Since the diagonal is the correlation of the item with itself, set it back to 1
+    rs[item_index, item_index] <- 1
+  }
+  rs
+}
+
+
+scales <- scales %>% 
+  rowwise() %>% 
+  mutate(r_real = list(cors_real[items, items]),
+         r_llm = list(cors_llm[items, items])) %>% 
+  mutate(reverse_items = list(find_reverse_items_by_first_item(r_real)),
+         r_real_rev = list(reverse_items(r_real, reverse_items)),
+         r_llm_rev = list(reverse_items(r_llm, reverse_items))) %>% 
+  mutate(
+    cfa_real = list(cfa(lvn, sample.cov = r_real_rev, sample.nobs = 1000)),
+    rel_real = semTools::compRelSEM(cfa_real)) %>%
+  mutate(
+    cfa_llm = list(cfa(lvn, sample.cov = r_llm_rev, sample.nobs = 1000)),
+    rel_llm = semTools::compRelSEM(cfa_llm))
+
+scales <- scales %>% filter(between(as.vector(rel_llm), 0, 1)) %>% filter(between(as.vector(rel_real), 0, 1))
+cor.test(scales$rel_llm, scales$rel_real)
+# scales %>% filter(scale == "LOT_Optimism") %>% pull(cfa_real) %>% .[[1]] %>% summary
 ```
 
 
@@ -139,3 +282,143 @@ ggplot(., aes(rel_real, rel_llm, label = scale)) +
 
 ggplotly(p)
 ```
+
+
+## Within-Scale
+```{r}
+holdout_both <- holdout %>% 
+  select(ItemStemIdA, ItemStemIdB, Pearson, CosineSimilarity) %>% 
+  left_join(llm_holdout_meta %>% select(ItemStemIdA = ItemStemId, VariableA = Variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>% 
+  left_join(llm_holdout_meta %>% select(ItemStemIdB = ItemStemId, VariableB = Variable, InstrumentB = instrument, ScaleB = scale_0, SubscaleB = scale_1))
+
+
+holdout_both %>% 
+  mutate(same_scale = if_else(ScaleA == ScaleB & SubscaleA == SubscaleB, 1,0,0),
+         same_instrument = if_else(InstrumentA == InstrumentB, 1, 0,0)) %>% 
+  group_by(same_scale, same_instrument) %>% 
+  summarise(cor(Pearson, CosineSimilarity))
+
+holdout_both %>% 
+  mutate(same_scale = if_else(ScaleA == ScaleB & SubscaleA == SubscaleB, 1,0,0),
+         same_instrument = if_else(InstrumentA == InstrumentB, 1, 0,0)) %>% 
+  group_by(same_scale, same_instrument) %>% 
+  summarise(cor(abs(Pearson), abs(CosineSimilarity)))
+
+holdout_both %>% 
+  mutate(same_scale = if_else(ScaleA == ScaleB & SubscaleA == SubscaleB, 1,0,0),
+         same_instrument = if_else(InstrumentA == InstrumentB, 1, 0,0)) %>% 
+  group_by(same_scale, same_instrument, ScaleA, SubscaleA, InstrumentA) %>% 
+  summarise(cor = cor(Pearson, CosineSimilarity)) %>% 
+  group_by(same_scale, same_instrument) %>% 
+  summarise(mean(cor, na.rm = T))
+```
+
+
+
+## Scales
+```{r}
+cors_llm <- holdout_llm %>% 
+  mutate(ScaleA = coalesce(str_c(ScaleA, SubscaleA), ScaleA)) %>% 
+  mutate(ScaleB = coalesce(str_c(ScaleB, SubscaleB), ScaleB)) %>% 
+  drop_na(InstrumentA, ScaleA, InstrumentB, ScaleB) %>% 
+  select(x = VariableA, y = VariableB, r = CosineSimilarity) %>% 
+  as.data.frame() |> 
+  igraph::graph_from_data_frame(directed = FALSE) |> 
+  igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
+diag(cors_llm) <- 1
+
+cors_real <- holdout_real %>% 
+  mutate(ScaleA = coalesce(str_c(ScaleA, SubscaleA), ScaleA)) %>% 
+  mutate(ScaleB = coalesce(str_c(ScaleB, SubscaleB), ScaleB)) %>% 
+  drop_na(InstrumentA, ScaleA, InstrumentB, ScaleB) %>% 
+  select(x = VariableA, y = VariableB, r = Pearson) %>% 
+  as.data.frame() |> 
+  igraph::graph_from_data_frame(directed = FALSE) |> 
+  igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
+diag(cors_real) <- 1
+
+scales <- llm_holdout_meta %>% 
+  mutate(scale_0 = coalesce(str_c(scale_0, scale_1), scale_0)) %>% 
+  drop_na(instrument, scale_0) %>% 
+  mutate(scale = str_replace_all(paste(instrument, scale_0), "[^a-zA-Z_0-9]", "_")) %>% 
+  group_by(scale) %>% 
+  summarise(
+    items = list(Variable),
+    lvn = paste(first(scale), " =~ ", paste(Variable, collapse = " + "))) %>% 
+  drop_na()
+
+scales <- scales %>% 
+  rowwise() %>% 
+  mutate(r_real = list(cors_real[items, items]),
+         r_llm = list(cors_llm[items, items])) %>% 
+  mutate(reverse_items = list(find_reverse_items_by_first_item(r_real)))
+
+cors_real_rev = reverse_items(cors_real, scales$reverse_items %>% unlist())
+cors_llm_rev = reverse_items(cors_llm, scales$reverse_items %>% unlist())
+
+
+model <- scales$lvn %>% head(20) %>% paste(collapse = "\n")
+
+lcor_real <- cfa(model, 
+            sample.cov = cors_real_rev, sample.nobs = 1000)
+lcor_llm <- cfa(model, 
+            sample.cov = cors_llm_rev, sample.nobs = 1000)
+
+estimated_rs <- standardizedsolution(lcor_real) %>% 
+  full_join(standardizedsolution(lcor_llm), by = c("lhs", "op", "rhs")) %>% 
+  select(lhs, op, rhs, est.std.x, est.std.y) 
+
+lv_rs <- estimated_rs %>% filter(op == "~~") %>% 
+  filter(lhs != rhs)
+
+
+cor.test(lv_rs$est.std.x, lv_rs$est.std.y)
+```
+
+
+
+```{r}
+lv_rs %>% 
+  mutate(correlation = round(est.std.x, 2)) %>% 
+  mutate(llm_based = round(est.std.y, 2)) %>% 
+  mutate(scales = str_c(lhs, "\n", rhs)) %>% 
+ggplot(., aes(correlation, llm_based, label = scales)) + 
+  geom_abline(linetype = "dashed") +
+  geom_point() +
+  xlab("Latente Skalenkorrelation, empirisch") +
+  ylab("Latente Skalenkorrelation, LLM") + 
+  theme_bw() +
+  coord_fixed(xlim = c(-1,1), ylim = c(-1,1)) -> p
+p
+ggplotly(p)
+```
+
+
+## Shuffle on through
+
+```{r}
+for(i in 1:30) {
+  model <- scales$lvn %>% sample(10) %>% paste(collapse = "\n")
+  
+  lcor_real <- cfa(model, 
+              sample.cov = cors_real_rev, sample.nobs = 1000)
+  lcor_llm <- cfa(model, 
+              sample.cov = cors_llm_rev, sample.nobs = 1000)
+  
+  estimated_rs <- standardizedsolution(lcor_real) %>% 
+    full_join(standardizedsolution(lcor_llm), by = c("lhs", "op", "rhs")) %>% 
+    select(lhs, op, rhs, est.std.x, est.std.y) 
+  
+  lv_rs <- bind_rows(lv_rs,
+                     estimated_rs %>% filter(op == "~~") %>% 
+                       filter(lhs != rhs)
+  )
+}
+
+lv_rsd <- lv_rs %>% distinct(lhs, rhs, .keep_all = T)
+
+
+
+cor.test(lv_rsd$est.std.x, lv_rsd$est.std.y)
+```
+
