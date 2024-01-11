@@ -123,6 +123,7 @@ scales <- scales %>%
     rel_llm = semTools::compRelSEM(cfa_llm))
 
 scales <- scales %>% filter(between(as.vector(rel_llm), 0, 1)) %>% filter(between(as.vector(rel_real), 0, 1))
+
 cor.test(scales$rel_llm, scales$rel_real)
 # scales %>% filter(scale == "LOT_Optimism") %>% pull(cfa_real) %>% .[[1]] %>% summary
 ```
@@ -130,7 +131,55 @@ cor.test(scales$rel_llm, scales$rel_real)
 
 
 ```{r}
+holdout <- holdout %>% 
+  mutate(se = (1 - Pearson^2)/sqrt(340 - 2),
+         rel = 1 - (se^2/(var(Pearson) + se^2))
+        )
+mean(holdout$se^2)
+cor(holdout$Pearson, holdout$CosineSimilarity)
+summary(lm(Pearson ~ CosineSimilarity, holdout))
+cor(holdout$Pearson, holdout$CosineSimilarity)/sqrt(mean(holdout$rel))
+
+mean(holdout$rel)
+corr_l <- cfa(
+"LPearson ~~ CosineSimilarity
+LPearson =~ Pearson
+LPearson ~~ 0.90*LPearson", holdout)
+summary(corr_l, std=T)
+
+library(lavaan)
+
+model <- '
+  # Latent variables
+  PearsonLatent =~ 1*Pearson
+
+  # Fixing error variances based on known standard errors
+  Pearson ~~ 0.002807621*Pearson
+
+  # Relationship between latent variables
+  PearsonLatent ~~ CosineSimilarity
+'
+
+fit <- sem(model, data = holdout %>% mutate(se2 = se^2))
+summary(fit, std=T)
+
+
+library(brms)
+(m3 <- brm(bf(Pearson | mi(se) ~ 1) +
+          bf(CosineSimilarity ~ 1) + set_rescor(T), data = holdout, backend = "cmdstanr", cores = 4))
+
+holdout %>% summarise(mean(se))
+corr <- cfa(
+"Pearson ~~ CosineSimilarity", holdout)
+summary(corr, std=T)
+corr_l <- cfa(
+"LPearson ~~ CosineSimilarity
+LPearson =~ Pearson
+LPearson ~~ 0.0529*LPearson", holdout)
+summary(corr_l, std=T)
 broom::tidy(cor.test(holdout$CosineSimilarity, holdout$Pearson))
+
+
 holdout %>% 
   mutate(items = str_c(ItemStemTextA, "\n", ItemStemTextB)) %>% 
 ggplot(., aes(CosineSimilarity, Pearson, label = items)) + 
@@ -150,6 +199,9 @@ ggplotly(p)
 
 
 ```{r}
+
+summary(lm(rel_real ~ rel_llm, data = scales %>% filter(!str_detect(scale, "random"))))
+
 scales %>% 
   mutate(rel_real = round(rel_real, 2)) %>% 
   mutate(rel_llm = round(rel_llm, 2)) %>% 
@@ -357,10 +409,17 @@ cors_real_rev = reverse_items(cors_real, scales$reverse_items %>% unlist())
 cors_llm_rev = reverse_items(cors_llm, scales$reverse_items %>% unlist())
 
 
-model <- scales$lvn %>% head(20) %>% paste(collapse = "\n")
+model <- scales$lvn %>% head(1) %>% paste(collapse = "\n")
 
 lcor_real <- cfa(model, 
             sample.cov = cors_real_rev, sample.nobs = 1000)
+
+library(glue)
+model_name = "item-similarity-20230710-164559"
+holdout_human_data = arrow::read_feather(
+  file = glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.human.feather")
+)
+lcor_real <- cfa(model, data = holdout_human_data)
 lcor_llm <- cfa(model, 
             sample.cov = cors_llm_rev, sample.nobs = 1000)
 
