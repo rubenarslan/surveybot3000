@@ -45,11 +45,14 @@ for(i in 1:500) {
     standardizedsolution(fit) %>% filter(lhs == "PearsonLatent", rhs ==  "CosineSimilarity")
   )
 }
-sim_results %>% summarise(mean(est.std), sqrt(mean(se^2)))
+sim_results %>% summarise(mean(est.std), sqrt(mean(se^2)), max(se))
 
 
 
+################################################################################
 ## precision analysis for reliability
+################################################################################
+
 cors_llm <- holdout_llm %>%
   select(x = VariableA, y = VariableB, r = CosineSimilarity) %>%
   as.data.frame() |>
@@ -95,7 +98,7 @@ scales <- scales %>%
   drop_na()
 
 random_scales <- list()
-for(i in 1:200) {
+for(i in 1:500) {
   n_items <- rpois(1, 10)
   n_items <- if_else(n_items < 3, 3, n_items)
   random_scales[[i]] <- llm_holdout_meta %>%
@@ -150,31 +153,24 @@ scales <- scales %>%
   mutate(
     rel_llm = list(psych::alpha(r_llm_rev, keys = F, n.obs = 400)$feldt)) %>%
   mutate(rel_real_alpha = rel_real$alpha$raw_alpha,
-         rel_real_upper = rel_real$upper.ci$raw_alpha,
-         rel_real_lower = rel_real$lower.ci$raw_alpha,
-         rel_real_se = (rel_real_upper - rel_real_lower)/2) %>%
-  mutate(rel_llm_alpha = rel_llm$alpha$raw_alpha,
-       rel_llm_upper = rel_llm$upper.ci$raw_alpha,
-       rel_llm_lower = rel_llm$lower.ci$raw_alpha,
-       rel_llm_se = (rel_llm_upper - rel_llm_lower)/2)
+         rel_llm_alpha = rel_llm$alpha$raw_alpha) %>%
+  mutate(
+    alpha_se = mean(diff(unlist(psychometric::alpha.CI(rel_real_alpha, k = number_of_items, N = 400, level = 0.95))))
+  )
 
-qplot(scales$rel_real_se)
-qplot(scales$rel_real_alpha, scales$rel_real_se)
-qplot(scales$number_of_items, scales$rel_real_se)
+qplot(scales$alpha_se)
+qplot(scales$rel_real_alpha, scales$alpha_se)
+qplot(scales$number_of_items, scales$alpha_se)
+qplot(scales$rel_real_alpha, scales$alpha_se, color = scales$number_of_items)
 
-
-scales <- scales %>% mutate(
-  alpha_se = mean(diff(unlist(psychometric::alpha.CI(rel_real_alpha, k = number_of_items, N = 400, level = 0.95))))
-)
-
-realistic_scales <- scales %>% filter(rel_real_alpha >= 0.3) %>% ungroup()
+realistic_scales <- scales %>% ungroup()
 
 sim_results <- tibble()
-for(i in 1:50) {
+for(i in 1:500) {
   picked_scales <- realistic_scales %>% filter(!str_detect(scale, "random")) %>% sample_n(40)
   subset <-
     bind_rows(picked_scales,
-              realistic_scales %>% filter(str_detect(scale, "random")) %>% sample_n(100)
+              realistic_scales %>% filter(str_detect(scale, "random")) %>% sample_n(200)
   )
 
   se2 <- mean(subset$alpha_se^2)
@@ -199,102 +195,152 @@ for(i in 1:50) {
                            standardizedsolution(fit) %>% filter(lhs == "PearsonLatent", rhs ==  "rel_llm_alpha")
   )
 }
-sim_results %>% filter(is.finite(se)) %>%
+sim_results %>%
   summarise(mean(est.std), sqrt(mean(se^2, na.rm = T)),
             max(se))
 
+scales %>% group_by(number_of_items) %>%
+  summarise(cor(rel_real_alpha, rel_llm_alpha), n())
 
-### TODO
 
-## having the LLM estimates is like having a sample of X for the items/rels/scale scores
-testset <- arrow::read_feather("ignore.data-test-set-item-similarity-20230710-164559")
-# testset <- arrow::read_feather("ignore.item-similarity-20230710-164559.scores.data.training.test.feather")
 
-# SE items residual 0.1103
-summary(lm(Pearson ~CosineSimilarity, testset))
 
-## Realistic SEs for a given N given the variability in empirical item correlations
-r <- testset$Pearson
-N <- rep(c(20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130), times = length(r))
-se = (1 - r^2)/sqrt(N - 2)
-tibble(N, se) %>% group_by(N) %>%
-  summarise(sqrt(mean(se^2)))
 
-ggplot(testset, aes(CosineSimilarity, Pearson)) +
-  geom_point(alpha = 0.1) +
-  geom_smooth(method = "lm")
 
-ses <- data.frame(
-  r = rep(seq(-1, 1, by = 0.01), each = 14),
-  N = rep(c(50, 60, number_of_scales, combinations_items, combinations_scales, 70, 80, 100, 200, 300, 500, 1000, 2000, 4000), times = 201)) %>%
-  mutate(
-    se = (1 - r^2)/sqrt(N - 2)
-    # https://www.jstor.org/stable/2277400?seq=1#page_scan_tab_contents
+################################################################################
+## Simulate scales
+################################################################################
+
+
+predict_manifest_scores = function(human_data, machine_data, mapping_data) {
+  human_cor = human_data %>%
+    cor(use = "p")
+
+  machine_cor = machine_data %>%
+    cor(use = "p")
+
+  mapping_data <- mapping_data %>%
+    mutate(instrument = coalesce(str_c(str_trim(instrument), "_"), ""),
+           scale0 = coalesce(str_c(str_trim(scale0), "_"), ""),
+           scale1 = coalesce(str_trim(scale1), ""),
+           scale = str_replace_all(paste0(instrument, scale0, scale1), "[^a-zA-Z_0-9]", "_")
+    )
+
+
+  scale_data = mapping_data %>%
+    dplyr::group_by(scale) %>%
+    dplyr::summarize(
+      items = list(variable)
+    ) %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(
+      human_cor = list(human_cor[items, items]),
+      reverse_keyed_items = list(find_reverse_items_by_first_item(human_cor)),
+    ) %>%
+    dplyr::select(-human_cor) %>%
+    dplyr::ungroup()
+
+
+  scale_pairs = combn(x = scale_data$scale, m = 2) %>%
+    t()
+
+  manifest_scores = tibble()
+
+  calculate_row_means = function(data_, scale_data_) {
+    data_ %>%
+      dplyr::select(
+        scale_data_$items %>%
+          unlist() %>%
+          dplyr::all_of()
+      ) %>%
+      dplyr::mutate_at(
+        .vars = scale_data_$reverse_keyed_items %>%
+          unlist(),
+        .funs = function(x) max(., na.rm = TRUE) + 1 - x
+      ) %>%
+      rowMeans(na.rm = TRUE)
+  }
+
+  for (i in seq_len(nrow(scale_pairs))) {
+    scale_a = scale_pairs[i, 1]
+    scale_b = scale_pairs[i, 2]
+
+    scale_data_a = scale_data %>%
+      dplyr::filter(scale == scale_a)
+
+    scale_data_b = scale_data %>%
+      dplyr::filter(scale == scale_b)
+
+    human_a = calculate_row_means(human_data, scale_data_a)
+    human_b = calculate_row_means(human_data, scale_data_b)
+    machine_a = calculate_row_means(machine_data, scale_data_a)
+    machine_b = calculate_row_means(machine_data, scale_data_b)
+
+    manifest_scores = manifest_scores %>%
+      dplyr::bind_rows(
+        tibble(
+          scale_a = scale_a,
+          scale_b = scale_b,
+          human_cor = cor(human_a, human_b, use = "p"),
+          machine_cor = cor(machine_a, machine_b, use = "p")
+        )
+      )
+  }
+  return(manifest_scores)
+}
+
+
+holdout_human_data = arrow::read_feather(
+  file = "ignore.item-similarity-20230710-164559.raw.osf-bainbridge-2021-s2-0.human.feather")
+
+# fine-tuned model
+holdout_machine_data = arrow::read_feather(
+  file = "ignore.item-similarity-20230710-164559.raw.osf-bainbridge-2021-s2-0.machine.feather")
+
+holdout_mapping_data = arrow::read_feather(
+  file = "ignore.item-similarity-20230710-164559.raw.osf-bainbridge-2021-s2-0.mapping.feather")
+
+manifest_scores = predict_manifest_scores(holdout_human_data, holdout_machine_data, holdout_mapping_data)
+n_distinct(manifest_scores$scale_a)
+
+N <- 400
+manifest_scores <- manifest_scores %>% mutate(se = (1 - human_cor^2)/sqrt(N - 2))
+se2 <- mean(manifest_scores$se^2)
+
+manifest_scores <- manifest_scores %>%
+ left_join(scales, by = c("scale_a" = "scale"))
+
+
+sim_results <- tibble()
+library(lavaan)
+
+for(i in 1:500) {
+  scales <- manifest_scores %>% select(scale_a) %>% distinct() %>% sample_n(number_of_scales) %>% pull(scale_a)
+
+  subset <- manifest_scores %>% filter(scale_a %in% scales, scale_b %in% scales)
+
+  N <- 400
+  subset <- subset %>% mutate(se = (1 - human_cor^2)/sqrt(N - 2))
+  se2 <- mean(subset$se^2)
+
+  r <- broom::tidy(cor.test(subset$human_cor, subset$machine_cor))
+  (r$conf.high - r$conf.low)/2
+
+  model <- paste0('
+    # Latent variables
+    PearsonLatent =~ 1*human_cor
+
+    # Fixing error variances based on known standard errors
+    human_cor ~~ ',se2,'*human_cor
+
+    # Relationship between latent variables
+    PearsonLatent ~~ machine_cor
+  ')
+
+  fit <- sem(model, data = subset)
+
+  sim_results <- bind_rows(sim_results,
+                           standardizedsolution(fit) %>% filter(lhs == "PearsonLatent", rhs ==  "machine_cor")
   )
-
-manifest_scores_ft <- feather::read_feather("holdout_manifest_scores_ft.feather")
-ggplot(manifest_scores_ft, aes(machine_cor, human_cor)) +
-  geom_point(alpha = 0.1) +
-  geom_smooth(method = "lm")
-latent_scores2 <- feather::read_feather("holdout_scale_scores_ft.feather")
-
-r <- latent_scores2$human_latent_cor
-N <- rep(c(20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130), times = length(r))
-se = (1 - r^2)/sqrt(N - 2)
-tibble(N, se) %>% group_by(N) %>%
-  summarise(sqrt(mean(se^2)))
-
-ggplot(latent_scores2, aes(machine_cor, human_latent_cor)) +
-  geom_point(alpha = 0.1) +
-  geom_smooth(method = "lm")
-summary(lm(human_latent_cor ~ machine_cor, latent_scores2))
-
-
-ggplot(latent_scores2, aes(machine_cor, human_cor)) +
-  geom_point(alpha = 0.1) +
-  geom_smooth(method = "lm")
-
-
-ses %>% filter(between(r, -.6, .6), round(se, 2) == 0.11) %>% summarise(max(N), mean(N))
-ses %>% filter(between(r, -.9, .9), round(se, 2) == 0.17) %>% summarise(max(N), mean(N))
-ses %>% filter(between(r, 0, 1), round(se, 2) == 0.05) %>% summarise(max(N), mean(N))
-ses %>% filter(between(r, 0.5, 1), round(se, 2) == 0.05) %>% summarise(max(N), mean(N))
-
-
-
-### Precision sym synthetic nomological nets
-library(tidyverse)
-holdout <- arrow::read_feather("ignore.data-holdout-set-item-similarity-20230710-164559")
-llm_holdout_meta <- arrow::read_feather("ignore.llmdata-holdout-set-item-similarity-20230710-164559.feather")
-holdout_real <- holdout %>%
-  select(ItemStemIdA, ItemStemIdB, Pearson) %>%
-  left_join(llm_holdout_meta %>% select(ItemStemIdA = ItemStemId, VariableA = Variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>%
-  left_join(llm_holdout_meta %>% select(ItemStemIdB = ItemStemId, VariableB = Variable, InstrumentB = instrument, ScaleB = scale_0, SubscaleB = scale_1))
-
-ho <- holdout_real %>%
-  group_by(InstrumentA, ScaleA, SubscaleA) %>%
-  mutate(ScaleA_item_number = n_distinct(ItemStemIdA)) %>%
-  group_by(InstrumentB, ScaleB, SubscaleB) %>%
-  mutate(ScaleB_item_number = n_distinct(ItemStemIdB))
-
-subs <- ho %>% filter(ScaleA_item_number == 5, ScaleB_item_number == 5, SubscaleA == "Motor Impulsivity", ScaleB == "Satisfaction with Life")
-
-scales <-
-  bind_rows(
-    subs %>%
-      ungroup() %>%
-      select(Variable = VariableA, Instrument = InstrumentA, Scale = ScaleA, Subscale = SubscaleA) %>%
-      distinct(),
-    subs %>%
-      ungroup() %>%
-      select(Variable = VariableB, Instrument = InstrumentB, Scale = ScaleB, Subscale = SubscaleB) %>%
-      distinct() ) %>%
-  mutate(
-    scale_0 = coalesce(str_c(Scale, Subscale), Scale)) %>%
-  # drop_na(Instrument, scale_0) %>%
-  mutate(scale = str_replace_all(paste(Instrument, scale_0), "[^a-zA-Z_0-9]", "_")) %>%
-  group_by(scale) %>%
-  summarise(
-    items = list(Variable),
-    lvn = paste(first(scale), " =~ ", paste(Variable, collapse = " + "))) %>%
-  drop_na()
+}
+sim_results %>% summarise(mean(est.std), sqrt(mean(se^2)), max(se))
