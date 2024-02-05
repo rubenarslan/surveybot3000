@@ -1,3 +1,15 @@
+################################################################################
+# The following precision simulations all follow the same structure.
+# - We randomly redraw from our holdout data to get realistic distributions
+#    of estimates.
+# - We repeat this random drawing process many times.
+# - We adjust for sampling error/the standard error of the empirical estimate.
+# - The target quantity is the standard error of the accuracy with which the
+#   synthetic estimates predicts the empirical estimates.
+#
+# We begin with item correlations, then reliabilities, then scale correlations.
+################################################################################
+
 library(tidyverse)
 
 number_of_items <- 175
@@ -5,9 +17,17 @@ number_of_scales <- 40
 combinations_items <- choose(number_of_items, 2)
 combinations_scales <- choose(number_of_scales, 2)
 
+################################################################################
 ## Precision simulation for inter-item correlations
+################################################################################
+
+
 holdout <- arrow::read_feather("ignore.data-holdout-set-item-similarity-20230710-164559")
-llm_holdout_meta <- arrow::read_feather("ignore.llmdata-holdout-set-item-similarity-20230710-164559.feather")
+llm_holdout_meta <- arrow::read_feather("ignore.llmdata-holdout-set-item-similarity-20230710-164559.feather") %>% select(DatasetId, ItemStemId, Variable) %>%
+  left_join(arrow::read_feather("ignore.item-similarity-20230710-164559.raw.osf-bainbridge-2021-s2-0.mapping.feather"), by = c("Variable" = 'variable')) %>%
+  rename(scale_0 = scale0,
+         scale_1 = scale1)
+
 holdout_llm <- holdout %>%
   select(ItemStemIdA, ItemStemIdB, Pearson, CosineSimilarity) %>%
   left_join(llm_holdout_meta %>% select(ItemStemIdA = ItemStemId, VariableA = Variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>%
@@ -98,7 +118,7 @@ scales <- scales %>%
   drop_na()
 
 random_scales <- list()
-for(i in 1:500) {
+for(i in 1:1000) {
   n_items <- rpois(1, 10)
   n_items <- if_else(n_items < 3, 3, n_items)
   random_scales[[i]] <- llm_holdout_meta %>%
@@ -167,7 +187,7 @@ realistic_scales <- scales %>% ungroup()
 
 sim_results <- tibble()
 for(i in 1:500) {
-  picked_scales <- realistic_scales %>% filter(!str_detect(scale, "random")) %>% sample_n(40)
+  picked_scales <- realistic_scales %>% filter(!str_detect(scale, "random")) %>% sample_n(number_of_scales)
   subset <-
     bind_rows(picked_scales,
               realistic_scales %>% filter(str_detect(scale, "random")) %>% sample_n(200)
@@ -308,8 +328,35 @@ manifest_scores <- manifest_scores %>% mutate(se = (1 - human_cor^2)/sqrt(N - 2)
 se2 <- mean(manifest_scores$se^2)
 
 manifest_scores <- manifest_scores %>%
- left_join(scales, by = c("scale_a" = "scale"))
+ left_join(scales, by = c("scale_a" = "scale")) %>%
+ left_join(scales, by = c("scale_b" = "scale"))
 
+manifest_scores %>%
+  mutate(items = number_of_items.x * number_of_items.y) %>%
+  group_by(items) %>%
+  summarise(cor = cor(human_cor, machine_cor), n()) %>%
+  ggplot(aes(items, cor)) + geom_point()
+
+
+manifest_scores %>%
+  filter(number_of_items.x > 4, number_of_items.y > 4) %>%
+  summarise(cor = cor(human_cor, machine_cor), n())
+
+r <- broom::tidy(cor.test(manifest_scores$human_cor, manifest_scores$machine_cor))
+
+model <- paste0('
+    # Latent variables
+    PearsonLatent =~ 1*human_cor
+
+    # Fixing error variances based on known standard errors
+    human_cor ~~ ',se2,'*human_cor
+
+    # Relationship between latent variables
+    PearsonLatent ~~ machine_cor
+  ')
+
+fit <- sem(model, data = manifest_scores)
+standardizedsolution(fit) %>% filter(lhs == "PearsonLatent", rhs ==  "machine_cor")
 
 sim_results <- tibble()
 library(lavaan)
