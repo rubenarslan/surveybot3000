@@ -1,27 +1,33 @@
-################################################################################
-# The following precision simulations all follow the same structure.
-# - We randomly redraw from our holdout data to get realistic distributions
-#    of estimates.
-# - We repeat this random drawing process many times.
-# - We adjust for sampling error/the standard error of the empirical estimate.
-# - The target quantity is the standard error of the accuracy with which the
-#   synthetic estimates predicts the empirical estimates.
-#
-# We begin with item correlations, then reliabilities, then scale correlations.
-################################################################################
+---
+title: "Precision simulations"
+author: "Ruben Arslan"
+date: "2023-11-07"
+output: html_document
+---
 
+
+The following precision simulations all follow the same structure.
+ - We randomly redraw from our holdout data to get realistic distributions
+    of estimates.
+ - We repeat this random drawing process many times.
+ - We adjust for sampling error/the standard error of the empirical estimate.
+ - The target quantity is the standard error of the accuracy with which the
+   synthetic estimates predicts the empirical estimates.
+
+ We begin with item correlations, then reliabilities, then scale correlations.
+
+```{r}
 library(tidyverse)
 
 number_of_items <- 175
 number_of_scales <- 40
 combinations_items <- choose(number_of_items, 2)
 combinations_scales <- choose(number_of_scales, 2)
-
-################################################################################
-## Precision simulation for inter-item correlations
-################################################################################
+```
 
 
+## Precision simulation for synthetic inter-item correlations
+```{r}
 holdout <- arrow::read_feather("ignore.data-holdout-set-item-similarity-20230710-164559")
 llm_holdout_meta <- arrow::read_feather("ignore.llmdata-holdout-set-item-similarity-20230710-164559.feather") %>% select(DatasetId, ItemStemId, Variable) %>%
   left_join(arrow::read_feather("ignore.item-similarity-20230710-164559.raw.osf-bainbridge-2021-s2-0.mapping.feather"), by = c("Variable" = 'variable')) %>%
@@ -66,13 +72,11 @@ for(i in 1:500) {
   )
 }
 sim_results %>% summarise(mean(est.std), sqrt(mean(se^2)), max(se))
+```
 
 
-
-################################################################################
-## precision analysis for reliability
-################################################################################
-
+## Precision simulation for synthetic reliabilities
+```{r}
 cors_llm <- holdout_llm %>%
   select(x = VariableA, y = VariableB, r = CosineSimilarity) %>%
   as.data.frame() |>
@@ -221,17 +225,11 @@ sim_results %>%
 
 scales %>% group_by(number_of_items) %>%
   summarise(cor(rel_real_alpha, rel_llm_alpha), n())
+```
 
 
-
-
-
-
-################################################################################
-## Simulate scales
-################################################################################
-
-
+## Precision simulation for synthetic scale correlations
+```{r}
 predict_manifest_scores = function(human_data, machine_data, mapping_data) {
   human_cor = human_data %>%
     cor(use = "p")
@@ -391,3 +389,4 @@ for(i in 1:500) {
   )
 }
 sim_results %>% summarise(mean(est.std), sqrt(mean(se^2)), max(se))
+```
