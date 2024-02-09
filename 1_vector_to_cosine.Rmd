@@ -1,0 +1,231 @@
+---
+title: "Vector representations to cosine similarities"
+output: html_document
+date: "2024-02-09"
+---
+
+```{r setup, include=FALSE,warning=F,message=F}
+knitr::opts_chunk$set(echo = TRUE, error = T)
+
+# Libraries and Settings
+
+# Libs ---------------------------
+library(tidyverse)
+library(arrow)
+library(glue)
+library(psych)
+library(lavaan)
+library(ggplot2)
+library(plotly)
+library(gridExtra)
+library(semTools)
+library(semPlot)
+
+model_name = "ItemSimilarityTraining-20240502-trial12"
+#model_name = "item-similarity-20231018-122504"
+pretrained_model_name = "all-mpnet-base-v2"
+
+data_path = glue("./")
+pretrained_data_path = glue("./")
+
+set.seed(42)
+```
+
+## Global functions
+```{r}
+find_reverse_items_by_first_item = function(.df) {
+  items = .df[-1, 1]
+  reverse_keyed_items = names(items)[which(items < 0)]
+  return(reverse_keyed_items)
+}
+
+reverse_items = function(.df, reverse_keyed_items) {
+  for (.col in reverse_keyed_items) {
+
+    if (!.col %in% colnames(.df)) {
+      next
+    }
+
+    .df[.col, ] = .df[.col, ] * -1
+    .df[, .col] = .df[, .col] * -1
+
+  }
+  return(.df)
+}
+
+
+summarize_cor_test = function(cor_test_df) {
+    df_ = suppressMessages({
+        cor_test_df %>% 
+            t() %>% 
+            as.data.frame() %>% 
+            tibble::rownames_to_column("dataset") %>% 
+            as_tibble() %>% 
+            dplyr::select(dplyr::any_of(c("dataset", "statistic.t", "parameter.df", "estimate.cor", "conf.int1", "conf.int2"))) %>% 
+            readr::type_convert() %>% 
+            dplyr::mutate(r2 = estimate.cor^2) %>% 
+            dplyr::mutate_if(is.numeric, round, 2)
+    })
+    return(df_)
+}
+
+```
+
+## Load data
+```{r}
+holdout_mapping_data = arrow::read_feather(
+  file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.mapping.feather"))
+)
+
+holdout_human_data = arrow::read_feather(
+  file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.human.feather"))
+)
+
+# fine-tuned model
+holdout_machine_data = arrow::read_feather(
+  file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.machine.feather"))
+)
+# 
+# # pre-trained model
+# holdout_machine_data_pt = arrow::read_feather(
+#   file = file.path(pretrained_data_path, glue("ignore.{pretrained_model_name}.raw.osf-bainbridge-2021-s2-0.machine.feather"))
+# )
+```
+
+## Join pairwise item correlations
+```{r}
+join_pairwise_correlation = function(df_human, df_machine) {
+
+    df_  = df_human %>% 
+        cor(use = "p") %>% 
+        reshape2::melt() %>% 
+        dplyr::left_join(
+            y = df_machine %>% 
+            cor(use = "p") %>% 
+            reshape2::melt(),
+            by = c("Var1", "Var2")
+        ) %>% 
+        dplyr::rename(
+            empirical_r = "value.x",
+            synthetic_r = "value.y",
+            variable_1 = Var1,
+            variable_2 = Var2
+        ) %>% 
+        dplyr::filter(variable_1 != variable_2)
+
+    return(df_)
+}
+
+holdout_data = join_pairwise_correlation(holdout_human_data, holdout_machine_data)
+
+N <- holdout_human_data %>% summarise_all(~ sum(!is.na(.))) %>% min()
+holdout_data <- holdout_data %>% mutate(empirical_r_se = (1 - empirical_r^2)/sqrt(N - 2))
+
+
+arrow::write_feather(holdout_data, sink = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))
+```
+
+
+## Join pairwise scale correlations
+```{r}
+predict_manifest_scores = function(human_data, machine_data, mapping_data) {
+  human_cor = human_data %>%
+    cor(use = "p")
+
+  machine_cor = machine_data %>%
+    cor(use = "p")
+
+  mapping_data_subscales <- mapping_data %>%
+    mutate(instrument = coalesce(str_c(str_trim(instrument), "_"), ""),
+           scale0 = coalesce(str_c(str_trim(scale0), "_"), ""),
+           scale1 = coalesce(str_trim(scale1), ""),
+           scale = str_replace_all(paste0(instrument, scale0, scale1), "[^a-zA-Z_0-9]", "_")
+    )
+  
+  mapping_data_scales <- mapping_data %>%
+    mutate(instrument = coalesce(str_c(str_trim(instrument), "_"), ""),
+           scale0 = coalesce(str_c(str_trim(scale0), "_"), ""),
+           scale1 = "",
+           scale = str_replace_all(paste0(instrument, scale0, scale1), "[^a-zA-Z_0-9]", "_")
+    )
+
+  mapping_data <- bind_rows(mapping_data_scales, mapping_data_subscales) %>% distinct() %>% filter(scale != "")
+
+
+  scale_data = mapping_data %>%
+    dplyr::group_by(scale) %>%
+    dplyr::summarize(
+      items = list(variable)
+    ) %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(
+      human_cor = list(human_cor[items, items]),
+      reverse_keyed_items = list(find_reverse_items_by_first_item(human_cor)),
+    ) %>%
+    dplyr::select(-human_cor) %>%
+    dplyr::ungroup()
+
+
+  scale_pairs = combn(x = scale_data$scale, m = 2) %>%
+    t() %>% 
+    as_tibble()
+  
+  # no pairs between subscales and their parents
+  scale_pairs <- scale_pairs %>% 
+    filter(! str_detect(V1, fixed(V2))) %>% 
+    filter(! str_detect(V2, fixed(V1))) %>% 
+    as.matrix()
+
+  manifest_scores = tibble()
+
+  calculate_row_means = function(data_, scale_data_) {
+    data_ %>%
+      dplyr::select(
+        scale_data_$items %>%
+          unlist() %>%
+          dplyr::all_of()
+      ) %>%
+      dplyr::mutate_at(
+        .vars = scale_data_$reverse_keyed_items %>%
+          unlist(),
+        .funs = function(x) max(., na.rm = TRUE) + 1 - x
+      ) %>%
+      rowMeans(na.rm = TRUE)
+  }
+
+  for (i in seq_len(nrow(scale_pairs))) {
+    scale_a = scale_pairs[i, 1]
+    scale_b = scale_pairs[i, 2]
+
+    scale_data_a = scale_data %>%
+      dplyr::filter(scale == scale_a)
+
+    scale_data_b = scale_data %>%
+      dplyr::filter(scale == scale_b)
+
+    human_a = calculate_row_means(human_data, scale_data_a)
+    human_b = calculate_row_means(human_data, scale_data_b)
+    machine_a = calculate_row_means(machine_data, scale_data_a)
+    machine_b = calculate_row_means(machine_data, scale_data_b)
+
+    human_cor <- broom::tidy(cor.test(human_a, human_b))
+    manifest_scores = manifest_scores %>%
+      dplyr::bind_rows(
+        tibble(
+          scale_a = scale_a,
+          scale_b = scale_b,
+          empirical_r = human_cor$estimate,
+          empirical_r_se = (human_cor$conf.high - human_cor$conf.low)/1.96,
+          synthetic_r = cor(machine_a, machine_b, use = "p")
+        )
+      )
+  }
+  return(manifest_scores)
+}
+
+
+manifest_scores = predict_manifest_scores(holdout_human_data, holdout_machine_data, holdout_mapping_data)
+
+arrow::write_feather(manifest_scores, sink = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather")))
+```
+
