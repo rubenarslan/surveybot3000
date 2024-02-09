@@ -323,7 +323,7 @@ holdout_mapping_data = arrow::read_feather(
 manifest_scores = predict_manifest_scores(holdout_human_data, holdout_machine_data, holdout_mapping_data)
 n_distinct(manifest_scores$scale_a)
 
-N <- 400
+N <- 340
 manifest_scores <- manifest_scores %>% mutate(se = (1 - human_cor^2)/sqrt(N - 2))
 se2 <- mean(manifest_scores$se^2)
 
@@ -332,7 +332,7 @@ manifest_scores <- manifest_scores %>%
  left_join(scales, by = c("scale_b" = "scale"))
 
 manifest_scores %>%
-  mutate(items = number_of_items.x * number_of_items.y) %>%
+  mutate(items = number_of_items.x + number_of_items.y) %>%
   group_by(items) %>%
   summarise(cor = cor(human_cor, machine_cor), n()) %>%
   ggplot(aes(items, cor)) + geom_point()
