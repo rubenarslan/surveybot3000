@@ -7,14 +7,15 @@ output: html_document
 
 
 The following precision simulations all follow the same structure.
- - We randomly redraw from our holdout data to get realistic distributions
-    of estimates.
- - We repeat this random drawing process many times.
- - We adjust for sampling error/the standard error of the empirical estimate.
- - The target quantity is the standard error of the accuracy with which the
-   synthetic estimates predicts the empirical estimates.
 
- We begin with item correlations, then reliabilities, then scale correlations.
+- We randomly redraw from our holdout data to get realistic distributions
+  of empirical estimates. SEs are estimated based on our planned N of 400.
+- We repeat this random drawing process many times.
+- We adjust for sampling error/the standard error of the empirical estimate to get the semi-latent accuracy.
+- The target quantity is the standard error of the semi-latent accuracy with 
+  which the synthetic estimates predicts the empirical estimates.
+
+We begin with item correlations, then reliabilities, then scale correlations.
 
 ```{r warning=F,message=F}
 knitr::opts_chunk$set(echo = TRUE, error = T)
@@ -253,7 +254,7 @@ scales %>% group_by(number_of_items) %>%
 
 ## Precision simulation for synthetic scale correlations
 ```{r}
-manifest_scores = arrow::read_feather(file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather")))
+manifest_scores = arrow::read_feather(file = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather")))
 
 n_distinct(manifest_scores$scale_a)
 
