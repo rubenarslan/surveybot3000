@@ -1,0 +1,475 @@
+---
+title: "Results in the holdout sample"
+author: "Ruben Arslan"
+date: "2023-11-07"
+output: html_document
+---
+
+Here, we apply the model to data not used for training, a holdout. The holdout sample was collected by Bainbridge et al. 2022.
+
+```{r warning=F,message=F}
+knitr::opts_chunk$set(echo = TRUE, error = T)
+
+# Libraries and Settings
+
+# Libs ---------------------------
+library(tidyverse)
+library(arrow)
+library(glue)
+library(psych)
+library(lavaan)
+library(ggplot2)
+library(plotly)
+library(gridExtra)
+library(semTools)
+library(semPlot)
+library(broom)
+library(broom.mixed)
+library(brms)
+options(mc.cores = parallel::detectCores(), 
+        brms.backend = "cmdstanr", 
+        brms.file_refit = "on_change")
+
+
+model_name = "ItemSimilarityTraining-20240502-trial12"
+#model_name = "item-similarity-20231018-122504"
+pretrained_model_name = "all-mpnet-base-v2"
+
+data_path = glue("./")
+pretrained_data_path = glue("./")
+
+set.seed(42)
+
+
+holdout <- arrow::read_feather(file = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))
+
+holdout_mapping_data = arrow::read_feather(
+  file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.mapping.feather"))
+) %>%
+  rename(scale_0 = scale0,
+         scale_1 = scale1)
+
+holdout_human_data = arrow::read_feather(
+  file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.human.feather"))
+)
+
+N <- holdout_human_data %>% summarise_all(~ sum(!is.na(.))) %>% min()
+total_N <- nrow(holdout_human_data)
+```
+
+The Bainbridge data was collected on N=`r total_N` respondent. The item with the most missing values still had n=`r N`.
+
+
+## Synthetic inter-item correlations
+```{r}
+holdout_llm <- holdout %>%
+  left_join(holdout_mapping_data %>% select(variable_1 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>%
+  left_join(holdout_mapping_data %>% select(variable_2 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1))
+
+library(lavaan)
+
+
+holdout_llm <- holdout_llm %>% mutate(se = (1 - empirical_r^2)/sqrt(N - 2))
+se2 <- mean(subset$se^2)
+
+r <- broom::tidy(cor.test(subset$empirical_r, subset$synthetic_r))
+
+model <- paste0('
+  # Latent variables
+  PearsonLatent =~ 1*empirical_r
+
+  # Fixing error variances based on known standard errors
+  empirical_r ~~ ',se2,'*empirical_r
+
+  # Relationship between latent variables
+  PearsonLatent ~~ synthetic_r
+')
+
+fit <- sem(model, data = subset)
+
+standardizedsolution(fit) %>% filter(lhs == "PearsonLatent", rhs ==  "synthetic_r")
+
+library(brms)
+(m_synth_r_items <- brm(
+  bf(empirical_r | mi(se) ~ 1) +
+  bf(synthetic_r ~ 1) + 
+    set_rescor(T), data = holdout_llm, 
+  file = "ignore/m_synth_r_items")
+
+summary(lm(empirical_r ~ synthetic_r, holdout_llm))
+```
+
+
+## Synthetic Reliabilities
+```{r}
+cors_llm <- holdout_llm %>%
+  select(x = variable_1, y = variable_2, r = synthetic_r) %>%
+  as.data.frame() |>
+  igraph::graph_from_data_frame(directed = FALSE) |>
+  igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
+diag(cors_llm) <- 1
+
+cors_real <- holdout_llm %>%
+  select(x = variable_1, y = variable_2, r = empirical_r) %>%
+  as.data.frame() |>
+  igraph::graph_from_data_frame(directed = FALSE) |>
+  igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
+diag(cors_real) <- 1
+
+subscales <- holdout_mapping_data %>%
+  select(variable, instrument, scale_0, scale_1) %>%
+  distinct() %>%
+  mutate(instrument = coalesce(str_c(str_trim(instrument), " "), ""),
+         scale_0 = coalesce(str_c(str_trim(scale_0), " "), ""),
+         scale_1 = coalesce(str_trim(scale_1), ""),
+         scale = str_replace_all(str_trim(paste0(instrument, scale_0, scale_1)), "[^a-zA-Z_0-9]", "_")
+  )
+n_distinct(subscales$scale)
+
+scales <- holdout_mapping_data %>%
+  select(variable, instrument, scale_0, scale_1) %>%
+  distinct() %>%
+  mutate(instrument = coalesce(str_c(str_trim(instrument), " "), ""),
+         scale_0 = coalesce(str_c(str_trim(scale_0), " "), ""),
+         scale_1 = "",
+         scale = str_replace_all(str_trim(paste0(instrument, scale_0, scale_1)), "[^a-zA-Z_0-9]", "_")
+  )
+
+scales <- bind_rows(scales, subscales) %>% distinct() %>% filter(scale != "")
+n_distinct(scales$scale)
+
+scales <- scales %>%
+  group_by(scale) %>%
+  summarise(
+    items = list(variable),
+    number_of_items = n_distinct(variable),
+    lvn = paste(first(scale), " =~ ", paste(variable, collapse = " + "))) %>%
+  drop_na()
+
+random_scales <- list()
+for(i in 1:200) {
+  n_items <- rpois(1, mean(scales$number_of_items))
+  n_items <- if_else(n_items < 3, 3, n_items)
+  random_scales[[i]] <- holdout_mapping_data %>%
+    sample_n(n_items) %>%
+    mutate(scale = paste0("random", i)) %>%
+    group_by(scale) %>%
+    summarise(
+      items = list(variable),
+      number_of_items = n_distinct(variable),
+      lvn = paste(first(scale), " =~ ", paste(variable, collapse = " + "))) %>%
+    drop_na()
+}
+
+random_scales <- bind_rows(random_scales)
+scales <- bind_rows(scales, random_scales)
+n_distinct(scales$scale)
+
+find_reverse_items_by_first_item <- function(rs) {
+  # negatively correlated with first item
+  items <- rs[-1, 1]
+  reverse_keyed_items <- names(items)[which(items < 0)]
+  reverse_keyed_items
+}
+
+reverse_items <- function(rs, reverse_keyed_items) {
+  # Reverse the correlations for the reverse-keyed items
+  for (item in reverse_keyed_items) {
+    # Get the index of the reverse-keyed item
+    item_index <- which(rownames(rs) == item)
+
+    # Reverse the correlations
+    rs[item_index, ] <- rs[item_index, ] * -1
+    rs[, item_index] <- rs[, item_index] * -1
+
+    # Since the diagonal is the correlation of the item with itself, set it back to 1
+    rs[item_index, item_index] <- 1
+  }
+  rs
+}
+
+scales <- scales %>% filter(number_of_items >= 3)
+
+scales <- scales %>%
+  rowwise() %>%
+  mutate(r_real = list(cors_real[items, items]),
+         r_llm = list(cors_llm[items, items])) %>%
+  mutate(reverse_items = list(find_reverse_items_by_first_item(r_real)),
+         r_real_rev = list(reverse_items(r_real, reverse_items)),
+         r_llm_rev = list(reverse_items(r_llm, reverse_items))) %>%
+  mutate(
+    rel_real = list(psych::alpha(r_real_rev, keys = F, n.obs = planned_N)$feldt)) %>%
+  mutate(
+    rel_llm = list(psych::alpha(r_llm_rev, keys = F, n.obs = planned_N)$feldt)) %>%
+  mutate(empirical_alpha = rel_real$alpha$raw_alpha,
+         synthetic_alpha = rel_llm$alpha$raw_alpha) %>%
+  mutate(
+    empirical_alpha_se = mean(diff(unlist(psychometric::alpha.CI(empirical_alpha, k = number_of_items, N = N, level = 0.95))))
+  )
+
+scales <- scales %>% filter(empirical_alpha > 0)
+# qplot(scales$empirical_alpha_se)
+# qplot(scales$empirical_alpha, scales$empirical_alpha_se)
+# qplot(scales$number_of_items, scales$empirical_alpha_se)
+# qplot(scales$empirical_alpha, scales$empirical_alpha_se, color = scales$number_of_items)
+
+
+se2 <- mean(scales$empirical_alpha_se^2)
+
+r <- broom::tidy(cor.test(scales$empirical_alpha, scales$synthetic_alpha))
+
+model <- paste0('
+  # Latent variables
+  latent_real_rel =~ 1*empirical_alpha
+
+  # Fixing error variances based on known standard errors
+  empirical_alpha ~~ ',se2,'*empirical_alpha
+
+  # Relationship between latent variables
+  latent_real_rel ~~ synthetic_alpha
+')
+
+fit <- sem(model, data = scales)
+```
+
+
+### Accuracy
+```{r}
+m_synth_r_rels <- brm(
+  bf(empirical_alpha | mi(empirical_alpha_se) ~ 1) +
+  bf(synthetic_alpha ~ 1) + 
+    set_rescor(T), 
+  data = scales, 
+  file = "ignore/m_synth_r_rels")
+
+bind_rows(
+  r %>% 
+    mutate(kind = "manifest") %>% 
+    select(kind, accuracy = estimate, conf.low, conf.high),
+  standardizedsolution(fit) %>% 
+    filter(lhs == "latent_real_rel", rhs ==  "synthetic_alpha") %>% 
+    mutate(kind = "semi-latent (SEM)") %>% 
+    select(kind, accuracy = est.std, 
+           conf.low = ci.lower, conf.high = ci.upper),
+  summary(m_synth_r_rels)$rescor_pars %>% 
+    mutate(kind = "semi-latent (Bayesian EIV)") %>% 
+    select(kind, accuracy = Estimate, conf.low = `l-95% CI`, conf.high = `u-95% CI`)
+  ) %>% 
+  knitr::kable(digits = 2)
+```
+
+
+### Prediction error according to predicted value
+```{r}
+(m_lmsynth_r_scales <- brm(
+  bf(empirical_alpha | mi(empirical_alpha_se) ~ synthetic_alpha,
+     sigma ~ synthetic_alpha), data = scales, 
+  file = "ignore/m_synth_r_scales_lm3"))
+pred <- conditional_effects(m_lmsynth_r_scales, method = "predict")
+conditional_effects(m_lmsynth_r_scales, dpar = "sigma")
+```
+
+
+### Scatter plot
+```{r}
+ggplot(scales, aes(synthetic_alpha, empirical_alpha, 
+                   color = str_detect(scale, "^random"), 
+              ymin = empirical_alpha - empirical_alpha_se,
+              ymax = empirical_alpha + empirical_alpha_se)) + 
+  geom_abline(linetype = "dashed") +
+  geom_smooth(aes(
+    x = synthetic_alpha,
+    y = estimate__,
+    ymin = lower__,
+    ymax = upper__,
+  ), stat = "identity", 
+  color = "#EB6841",
+  fill = "#EDC951",
+  data = as.data.frame(pred$synthetic_alpha)) +
+  geom_point(alpha = 0.3, size = 1) +
+  scale_color_manual(values = c("#00A0B0", "#6A4A3C"),
+                     guide = "none") +
+  xlab("Synthetic Cronbach's alpha") + 
+  ylab("Empirical Cronbach's alpha") +
+  theme_bw() +
+  coord_fixed(xlim = c(0,1), ylim = c(0,1)) -> plot_scales
+plot_scales
+```
+
+### Interactive plot
+```{r}
+(scales %>% 
+  mutate(synthetic_alpha = round(synthetic_alpha, 2),
+         empirical_alpha = round(empirical_alpha, 2),
+         scale = str_replace_all(scale, "_+", " ")) %>% 
+ggplot(., aes(synthetic_alpha, empirical_alpha, 
+                   color = str_detect(scale, "^random"), 
+              # ymin = empirical_r - empirical_r_se, 
+              # ymax = empirical_r + empirical_r_se, 
+              label = scale)) + 
+  geom_abline(linetype = "dashed") +
+  geom_point(alpha = 0.3, size = 1) +
+  scale_color_manual(values = c("#00A0B0", "#6A4A3C"),
+                     guide = F) +
+  xlab("Synthetic Cronbach's alpha") + 
+  ylab("Empirical Cronbach's alpha") +
+  theme_bw() +
+  theme(legend.position='none') + 
+  coord_fixed(xlim = c(0,1), ylim = c(0,1))) %>% 
+  ggplotly()
+```
+
+<details><summary>Table</summary>
+
+```{r}
+scales %>% 
+                mutate(empirical_alpha = sprintf("%.2f±%.3f", empirical_alpha,
+                                             empirical_alpha_se),
+                       synthetic_alpha = sprintf("%.2f", synthetic_alpha),
+                       scale = str_replace_all(scale, "_+", " ")
+                       ) %>% 
+                select(scale, empirical_alpha, synthetic_alpha, number_of_items) %>% 
+  DT::datatable(rownames = FALSE,
+                filter = "top")
+```
+
+</details>
+
+
+## Synthetic Scale Correlations
+```{r}
+manifest_scores = arrow::read_feather(file = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather")))
+
+n_distinct(manifest_scores$scale_a)
+
+manifest_scores <- manifest_scores %>%
+ left_join(scales, by = c("scale_a" = "scale")) %>%
+ left_join(scales, by = c("scale_b" = "scale"))
+
+manifest_scores %>%
+  mutate(items = number_of_items.x + number_of_items.y) %>%
+  group_by(items) %>%
+  summarise(cor = cor(empirical_r, synthetic_r), n()) %>%
+  ggplot(aes(items, cor)) + 
+  geom_point()
+
+
+manifest_scores %>%
+  filter(number_of_items.x > 4, number_of_items.y > 4) %>%
+  summarise(cor = cor(empirical_r, synthetic_r), n())
+```
+
+### Accuracy
+```{r}
+r <- broom::tidy(cor.test(manifest_scores$empirical_r, manifest_scores$synthetic_r))
+
+se2 <- mean(manifest_scores$empirical_r_se^2)
+model <- paste0('
+    # Latent variables
+    PearsonLatent =~ 1*empirical_r
+
+    # Fixing error variances based on known standard errors
+    empirical_r ~~ ',se2,'*empirical_r
+
+    # Relationship between latent variables
+    PearsonLatent ~~ synthetic_r
+  ')
+
+fit <- sem(model, data = manifest_scores)
+
+summary(m_scales <- lm(empirical_r ~ synthetic_r, manifest_scores))
+sqrt(var(m_scales$residuals)-se2) # prediction error sans sampling error
+
+m_synth_r_scales <- brm(
+  bf(empirical_r | mi(empirical_r_se) ~ 1) +
+  bf(synthetic_r ~ 1) + 
+    set_rescor(T), data = manifest_scores, 
+  file = "ignore/m_synth_r_scales")
+
+bind_rows(
+  r %>% 
+    mutate(kind = "manifest") %>% 
+    select(kind, accuracy = estimate, conf.low, conf.high),
+  standardizedsolution(fit) %>% 
+    filter(lhs == "PearsonLatent", rhs ==  "synthetic_r") %>% 
+    mutate(kind = "semi-latent (SEM)") %>% 
+    select(kind, accuracy = est.std, 
+           conf.low = ci.lower, conf.high = ci.upper),
+  summary(m_synth_r_scales)$rescor_pars %>% 
+    mutate(kind = "semi-latent (Bayesian EIV)") %>% 
+    select(kind, accuracy = Estimate, conf.low = `l-95% CI`, conf.high = `u-95% CI`)
+  ) %>% 
+  knitr::kable(digits = 2)
+```
+
+
+### Prediction error according to predicted value
+```{r}
+(m_lmsynth_r_scales <- brm(
+  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r,
+     sigma ~ I(synthetic_r^2)), data = manifest_scores, 
+  file = "ignore/m_synth_r_scales_lm3"))
+pred <- conditional_effects(m_lmsynth_r_scales, method = "predict")
+conditional_effects(m_lmsynth_r_scales, dpar = "sigma")
+```
+
+
+### Scatter plot
+```{r}
+ggplot(manifest_scores, aes(synthetic_r, empirical_r, 
+              ymin = empirical_r - empirical_r_se,
+              ymax = empirical_r + empirical_r_se)) + 
+  geom_abline(linetype = "dashed") +
+  geom_smooth(aes(
+    x = synthetic_r,
+    y = estimate__,
+    ymin = lower__,
+    ymax = upper__,
+  ), stat = "identity", 
+  color = "#EB6841",
+  fill = "#EDC951",
+  data = as.data.frame(pred$synthetic_r)) +
+  geom_point(color = "#00A0B0", alpha = 0.3, size = 1) +
+  xlab("Synthetic inter-scale correlation") + 
+  ylab("Empirical inter-scale correlation") +
+  theme_bw() +
+  coord_fixed(xlim = c(-1,1), ylim = c(-1,1)) -> plot_scales
+plot_scales
+```
+
+### Interactive plot
+```{r}
+(manifest_scores %>% 
+  mutate(synthetic_r = round(synthetic_r, 2),
+         empirical_r = round(empirical_r, 2),
+         scales = str_replace_all(str_c(scale_a, "\n", scale_b),
+                                  "_+", " ")) %>% 
+ggplot(., aes(synthetic_r, empirical_r, 
+              # ymin = empirical_r - empirical_r_se, 
+              # ymax = empirical_r + empirical_r_se, 
+              label = scales)) + 
+  geom_abline(linetype = "dashed") +
+  geom_point(color = "#00A0B0", alpha = 0.3, size = 1) +
+  xlab("Synthetic inter-scale correlation") + 
+  ylab("Empirical inter-scale correlation") +
+  theme_bw() +
+  coord_fixed(xlim = c(-1,1), ylim = c(-1,1))) %>% 
+  ggplotly()
+```
+
+<details><summary>Table</summary>
+
+```{r}
+manifest_scores %>% 
+                mutate(empirical_r = sprintf("%.2f±%.3f", empirical_r,
+                                             empirical_r_se),
+                       synthetic_r = sprintf("%.2f", synthetic_r),
+                       scale_a = str_replace_all(scale_a, "_+", " "),
+                       scale_b = str_replace_all(scale_b, "_+", " ")
+                       ) %>% 
+                select(scale_a, scale_b, empirical_r, synthetic_r) %>% 
+  DT::datatable(rownames = FALSE,
+                filter = "top")
+```
+
+</details>
