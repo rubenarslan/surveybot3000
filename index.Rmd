@@ -1,6 +1,5 @@
 ---
-title: "Results in the holdout sample"
-author: "Ruben Arslan"
+title: "Language models accurately infer correlations between psychological items and scales from text alone"
 date: "2023-11-07"
 output: html_document
 ---
@@ -53,6 +52,9 @@ holdout_human_data = arrow::read_feather(
   file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.human.feather"))
 )
 
+scales <- arrow::read_feather(file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.scales.feather"))
+)
+
 N <- holdout_human_data %>% summarise_all(~ sum(!is.na(.))) %>% min()
 total_N <- nrow(holdout_human_data)
 ```
@@ -64,15 +66,15 @@ The Bainbridge data was collected on N=`r total_N` respondent. The item with the
 ```{r}
 holdout_llm <- holdout %>%
   left_join(holdout_mapping_data %>% select(variable_1 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>%
-  left_join(holdout_mapping_data %>% select(variable_2 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1))
+  left_join(holdout_mapping_data %>% select(variable_2 = variable, InstrumentB = instrument, ScaleB = scale_0, SubscaleB = scale_1))
 
 library(lavaan)
 
 
 holdout_llm <- holdout_llm %>% mutate(se = (1 - empirical_r^2)/sqrt(N - 2))
-se2 <- mean(subset$se^2)
+se2 <- mean(holdout_llm$se^2)
 
-r <- broom::tidy(cor.test(subset$empirical_r, subset$synthetic_r))
+r <- broom::tidy(cor.test(holdout_llm$empirical_r, holdout_llm$synthetic_r))
 
 model <- paste0('
   # Latent variables
@@ -85,20 +87,111 @@ model <- paste0('
   PearsonLatent ~~ synthetic_r
 ')
 
-fit <- sem(model, data = subset)
-
-standardizedsolution(fit) %>% filter(lhs == "PearsonLatent", rhs ==  "synthetic_r")
+fit <- sem(model, data = holdout_llm)
 
 library(brms)
-(m_synth_r_items <- brm(
+m_synth_r_items <- brm(
   bf(empirical_r | mi(se) ~ 1) +
   bf(synthetic_r ~ 1) + 
     set_rescor(T), data = holdout_llm, 
-  file = "ignore/m_synth_r_items")
-
-summary(lm(empirical_r ~ synthetic_r, holdout_llm))
+  file = "ignore/m_synth_r_items_r")
 ```
 
+
+### Accuracy
+```{r}
+bind_rows(
+  r %>% 
+    mutate(kind = "manifest") %>% 
+    select(kind, accuracy = estimate, conf.low, conf.high),
+  standardizedsolution(fit) %>% 
+    filter(lhs == "PearsonLatent", rhs ==  "synthetic_r") %>% 
+    mutate(kind = "semi-latent (SEM)") %>% 
+    select(kind, accuracy = est.std, 
+           conf.low = ci.lower, conf.high = ci.upper),
+  summary(m_synth_r_items)$rescor_pars %>% 
+    mutate(kind = "semi-latent (Bayesian EIV)") %>% 
+    select(kind, accuracy = Estimate, conf.low = `l-95% CI`, conf.high = `u-95% CI`)
+  ) %>% 
+  knitr::kable(digits = 2)
+```
+
+
+### Prediction error according to predicted value
+```{r}
+(m_lmsynth_r_items <- brm(
+  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r,
+     sigma ~ I(synthetic_r^2)), data = holdout_llm, 
+  file = "ignore/m_synth_r_items"))
+pred <- conditional_effects(m_lmsynth_r_items, method = "predict")
+conditional_effects(m_lmsynth_r_items, dpar = "sigma")
+```
+
+
+### Scatter plot
+```{r}
+ggplot(holdout_llm, aes(synthetic_r, empirical_r, 
+              ymin = empirical_r - empirical_r_se,
+              ymax = empirical_r + empirical_r_se)) + 
+  geom_abline(linetype = "dashed") +
+  geom_smooth(aes(
+    x = synthetic_r,
+    y = estimate__,
+    ymin = lower__,
+    ymax = upper__,
+  ), stat = "identity", 
+  color = "#EB6841",
+  fill = "#EDC951",
+  data = as.data.frame(pred$synthetic_r)) +
+  geom_point(color = "#00A0B0", alpha = 0.1, size = 1) +
+  xlab("Synthetic inter-item correlation") + 
+  ylab("Empirical inter-item correlation") +
+  theme_bw() +
+  coord_fixed(xlim = c(-1,1), ylim = c(-1,1)) -> plot_items
+plot_items
+```
+
+### Interactive plot
+```{r}
+(holdout_llm %>% 
+   left_join(holdout_mapping_data %>% select(variable_1 = variable,
+                                             item_text_1 = item_text)) %>% 
+   left_join(holdout_mapping_data %>% select(variable_2 = variable,
+                                             item_text_2 = item_text)) %>% 
+  mutate(synthetic_r = round(synthetic_r, 2),
+         empirical_r = round(empirical_r, 2),
+         items = str_replace_all(str_c(item_text_1, "\n", item_text_2),
+                                  "_+", " ")) %>% 
+ggplot(., aes(synthetic_r, empirical_r, 
+              # ymin = empirical_r - empirical_r_se, 
+              # ymax = empirical_r + empirical_r_se, 
+              label = items)) + 
+  geom_abline(linetype = "dashed") +
+  geom_point(color = "#00A0B0", alpha = 0.3, size = 1) +
+  xlab("Synthetic inter-item correlation") + 
+  ylab("Empirical inter-item correlation") +
+  theme_bw() +
+  coord_fixed(xlim = c(-1,1), ylim = c(-1,1))) %>% 
+  ggplotly()
+```
+
+<details><summary>Table</summary>
+
+```{r}
+holdout_llm %>% 
+   left_join(holdout_mapping_data %>% select(variable_1 = variable,
+                                             item_text_1 = item_text)) %>% 
+   left_join(holdout_mapping_data %>% select(variable_2 = variable,
+                                             item_text_2 = item_text)) %>% 
+                mutate(empirical_r = sprintf("%.2f±%.3f", empirical_r,
+                                             empirical_r_se),
+                       synthetic_r = sprintf("%.2f", synthetic_r)) %>% 
+                select(item_text_1, item_text_2, empirical_r, synthetic_r) %>% 
+  DT::datatable(rownames = FALSE,
+                filter = "top")
+```
+
+</details>
 
 ## Synthetic Reliabilities
 ```{r}
@@ -116,35 +209,22 @@ cors_real <- holdout_llm %>%
   igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
 diag(cors_real) <- 1
 
-subscales <- holdout_mapping_data %>%
-  select(variable, instrument, scale_0, scale_1) %>%
-  distinct() %>%
-  mutate(instrument = coalesce(str_c(str_trim(instrument), " "), ""),
-         scale_0 = coalesce(str_c(str_trim(scale_0), " "), ""),
-         scale_1 = coalesce(str_trim(scale_1), ""),
-         scale = str_replace_all(str_trim(paste0(instrument, scale_0, scale_1)), "[^a-zA-Z_0-9]", "_")
-  )
-n_distinct(subscales$scale)
-
-scales <- holdout_mapping_data %>%
-  select(variable, instrument, scale_0, scale_1) %>%
-  distinct() %>%
-  mutate(instrument = coalesce(str_c(str_trim(instrument), " "), ""),
-         scale_0 = coalesce(str_c(str_trim(scale_0), " "), ""),
-         scale_1 = "",
-         scale = str_replace_all(str_trim(paste0(instrument, scale_0, scale_1)), "[^a-zA-Z_0-9]", "_")
-  )
-
-scales <- bind_rows(scales, subscales) %>% distinct() %>% filter(scale != "")
+mapping_data <- holdout_mapping_data
+items_by_scale <- bind_rows(
+  scales %>% filter(scale_1 == "") %>% left_join(mapping_data %>% select(-scale_1), by = c("instrument", "scale_0")),
+  scales %>% filter(scale_1 != "") %>% left_join(mapping_data, by = c("instrument", "scale_0", "scale_1"))
+)
+  
 n_distinct(scales$scale)
 
-scales <- scales %>%
-  group_by(scale) %>%
+scales <- items_by_scale %>%
+  group_by(keyed, scale) %>%
   summarise(
     items = list(variable),
     number_of_items = n_distinct(variable),
     lvn = paste(first(scale), " =~ ", paste(variable, collapse = " + "))) %>%
-  drop_na()
+  drop_na() %>% 
+  ungroup()
 
 random_scales <- list()
 for(i in 1:200) {
@@ -158,17 +238,23 @@ for(i in 1:200) {
       items = list(variable),
       number_of_items = n_distinct(variable),
       lvn = paste(first(scale), " =~ ", paste(variable, collapse = " + "))) %>%
-    drop_na()
+    drop_na() %>% 
+    mutate(keyed = 1)
 }
 
 random_scales <- bind_rows(random_scales)
 scales <- bind_rows(scales, random_scales)
 n_distinct(scales$scale)
 
-find_reverse_items_by_first_item <- function(rs) {
+find_reverse_items_by_first_item <- function(rs, first_item_key) {
   # negatively correlated with first item
   items <- rs[-1, 1]
-  reverse_keyed_items <- names(items)[which(items < 0)]
+  if(first_item_key == 1) {
+    reversed <- which(items < 0)
+  } else {
+    reversed <- which(items > 0)
+  }
+  reverse_keyed_items <- names(items)[reversed]
   reverse_keyed_items
 }
 
@@ -194,13 +280,13 @@ scales <- scales %>%
   rowwise() %>%
   mutate(r_real = list(cors_real[items, items]),
          r_llm = list(cors_llm[items, items])) %>%
-  mutate(reverse_items = list(find_reverse_items_by_first_item(r_real)),
+  mutate(reverse_items = list(find_reverse_items_by_first_item(r_real, keyed)),
          r_real_rev = list(reverse_items(r_real, reverse_items)),
          r_llm_rev = list(reverse_items(r_llm, reverse_items))) %>%
   mutate(
-    rel_real = list(psych::alpha(r_real_rev, keys = F, n.obs = planned_N)$feldt)) %>%
+    rel_real = list(psych::alpha(r_real_rev, keys = F, n.obs = N)$feldt)) %>%
   mutate(
-    rel_llm = list(psych::alpha(r_llm_rev, keys = F, n.obs = planned_N)$feldt)) %>%
+    rel_llm = list(psych::alpha(r_llm_rev, keys = F, n.obs = N)$feldt)) %>%
   mutate(empirical_alpha = rel_real$alpha$raw_alpha,
          synthetic_alpha = rel_llm$alpha$raw_alpha) %>%
   mutate(
@@ -259,12 +345,12 @@ bind_rows(
 ```
 
 
-### Prediction error according to predicted value
+### Prediction error according to predicted value and no. of items
 ```{r}
 (m_lmsynth_r_scales <- brm(
   bf(empirical_alpha | mi(empirical_alpha_se) ~ synthetic_alpha,
-     sigma ~ synthetic_alpha), data = scales, 
-  file = "ignore/m_synth_r_scales_lm3"))
+     sigma ~ synthetic_alpha + number_of_items), data = scales, 
+  file = "ignore/m_synth_rel_lm"))
 pred <- conditional_effects(m_lmsynth_r_scales, method = "predict")
 conditional_effects(m_lmsynth_r_scales, dpar = "sigma")
 ```
@@ -323,12 +409,13 @@ ggplot(., aes(synthetic_alpha, empirical_alpha,
 
 ```{r}
 scales %>% 
-                mutate(empirical_alpha = sprintf("%.2f±%.3f", empirical_alpha,
-                                             empirical_alpha_se),
-                       synthetic_alpha = sprintf("%.2f", synthetic_alpha),
-                       scale = str_replace_all(scale, "_+", " ")
-                       ) %>% 
-                select(scale, empirical_alpha, synthetic_alpha, number_of_items) %>% 
+  filter(!str_detect(scale, "^random")) %>% 
+  mutate(empirical_alpha = sprintf("%.2f±%.3f", empirical_alpha,
+                               empirical_alpha_se),
+         synthetic_alpha = sprintf("%.2f", synthetic_alpha),
+         scale = str_replace_all(scale, "_+", " ")
+         ) %>% 
+  select(scale, empirical_alpha, synthetic_alpha, number_of_items) %>% 
   DT::datatable(rownames = FALSE,
                 filter = "top")
 ```

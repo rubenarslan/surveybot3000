@@ -33,10 +33,16 @@ set.seed(42)
 
 ## Global functions
 ```{r}
-find_reverse_items_by_first_item = function(.df) {
-  items = .df[-1, 1]
-  reverse_keyed_items = names(items)[which(items < 0)]
-  return(reverse_keyed_items)
+find_reverse_items_by_first_item <- function(rs, first_item_key) {
+  # negatively correlated with first item
+  items <- rs[-1, 1]
+  if(first_item_key == 1) {
+    reversed <- which(items < 0)
+  } else {
+    reversed <- which(items > 0)
+  }
+  reverse_keyed_items <- names(items)[reversed]
+  reverse_keyed_items
 }
 
 reverse_items = function(.df, reverse_keyed_items) {
@@ -76,6 +82,57 @@ summarize_cor_test = function(cor_test_df) {
 holdout_mapping_data = arrow::read_feather(
   file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.mapping.feather"))
 )
+
+facets <- readr::read_tsv("ignore/facets.tsv")
+holdout_mapping_data <- holdout_mapping_data %>% 
+  separate(variable, c("instrument1", "facet"), remove = F,extra = "drop") %>% 
+  left_join(facets %>% select(instrument1, facet, scale2), by = c("instrument1", "facet")) %>% 
+  mutate(scale1 = coalesce(scale1, scale2)) %>% 
+  select(-instrument1, -facet, -scale2)
+
+
+first_items <- bind_rows(
+    holdout_mapping_data %>%
+  select(variable, instrument, scale_0 = scale0, scale_1 = scale1,
+         item_text) %>%
+  mutate(instrument = coalesce(str_c(str_trim(instrument), " "), ""),
+         scale_0 = coalesce(str_c(str_trim(scale_0), " "), ""),
+         scale_1 = "",
+         scale = str_replace_all(str_trim(paste0(instrument, scale_0, scale_1)), "[^a-zA-Z_0-9]", "_")
+  ),
+  holdout_mapping_data %>%
+  select(variable, instrument, scale_0 = scale0, scale_1 = scale1,
+         item_text) %>%
+  mutate(instrument = coalesce(str_c(str_trim(instrument), " "), ""),
+         scale_0 = coalesce(str_c(str_trim(scale_0), " "), ""),
+         scale_1 = coalesce(str_trim(scale_1), ""),
+         scale = str_replace_all(str_trim(paste0(instrument, scale_0, scale_1)), "[^a-zA-Z_0-9]", "_")
+  )) %>% 
+  group_by(scale) %>% 
+  arrange(variable) %>% 
+  filter(row_number() == 1) %>% 
+  mutate(instrument = str_trim(instrument),
+         scale_0 = str_trim(scale_0),
+         scale_1 = str_trim(scale_1))
+
+rio::export(first_items %>% 
+  select(scale, item_text, variable), "ignore/first_items.xlsx")
+coded <- rio::import("ignore/first_items_coded.xlsx")
+
+scales <- first_items %>% left_join(coded) %>% 
+  mutate(scale = str_replace(scale, "opennness", "openness"),
+         scale_0 = str_replace(scale_0, "opennness", "openness")) %>% 
+  select(-item_text, -variable)
+
+arrow::write_feather(scales, sink = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.scales.feather"))
+)
+
+holdout_mapping_data <- holdout_mapping_data %>% 
+  mutate(scale0 = str_replace(scale0, "opennness", "openness"))
+
+arrow::write_feather(holdout_mapping_data, sink = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.mapping2.feather"))
+)
+
 
 holdout_human_data = arrow::read_feather(
   file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.human.feather"))
@@ -128,39 +185,30 @@ arrow::write_feather(holdout_data, sink = file.path(data_path, glue("ignore.{mod
 
 ## Join pairwise scale correlations
 ```{r}
-predict_manifest_scores = function(human_data, machine_data, mapping_data) {
+predict_manifest_scores = function(human_data, machine_data, mapping_data, scale_data) {
   human_cor = human_data %>%
     cor(use = "p")
 
   machine_cor = machine_data %>%
     cor(use = "p")
 
-  mapping_data_subscales <- mapping_data %>%
-    mutate(instrument = coalesce(str_c(str_trim(instrument), "_"), ""),
-           scale0 = coalesce(str_c(str_trim(scale0), "_"), ""),
-           scale1 = coalesce(str_trim(scale1), ""),
-           scale = str_replace_all(paste0(instrument, scale0, scale1), "[^a-zA-Z_0-9]", "_")
-    )
-  
-  mapping_data_scales <- mapping_data %>%
-    mutate(instrument = coalesce(str_c(str_trim(instrument), "_"), ""),
-           scale0 = coalesce(str_c(str_trim(scale0), "_"), ""),
-           scale1 = "",
-           scale = str_replace_all(paste0(instrument, scale0, scale1), "[^a-zA-Z_0-9]", "_")
-    )
+  mapping_data <- mapping_data %>% 
+                             rename(scale_0 = scale0,
+                                    scale_1 = scale1)
+  items_by_scale <- bind_rows(
+    scale_data %>% filter(scale_1 == "") %>% left_join(mapping_data %>% select(-scale_1), by = c("instrument", "scale_0")),
+    scale_data %>% filter(scale_1 != "") %>% left_join(mapping_data, by = c("instrument", "scale_0", "scale_1"))
+  )
 
-  mapping_data <- bind_rows(mapping_data_scales, mapping_data_subscales) %>% distinct() %>% filter(scale != "")
-
-
-  scale_data = mapping_data %>%
-    dplyr::group_by(scale) %>%
+  scale_data = items_by_scale %>%
+    dplyr::group_by(keyed, scale) %>%
     dplyr::summarize(
       items = list(variable)
     ) %>%
     dplyr::rowwise() %>%
     dplyr::mutate(
       human_cor = list(human_cor[items, items]),
-      reverse_keyed_items = list(find_reverse_items_by_first_item(human_cor)),
+      reverse_keyed_items = list(find_reverse_items_by_first_item(human_cor, keyed)),
     ) %>%
     dplyr::select(-human_cor) %>%
     dplyr::ungroup()
@@ -224,8 +272,9 @@ predict_manifest_scores = function(human_data, machine_data, mapping_data) {
 }
 
 
-manifest_scores = predict_manifest_scores(holdout_human_data, holdout_machine_data, holdout_mapping_data)
+manifest_scores = predict_manifest_scores(holdout_human_data, holdout_machine_data, holdout_mapping_data, scales)
 
 arrow::write_feather(manifest_scores, sink = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather")))
 ```
+
 
