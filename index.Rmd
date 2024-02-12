@@ -120,7 +120,7 @@ bind_rows(
 
 ```{r}
 (m_lmsynth_r_items <- brm(
-  bf(empirical_r | mi(empirical_r_se) ~ poly(synthetic_r,degree = 3),
+  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r,
      sigma ~ poly(synthetic_r,degree = 3)), data = holdout_llm, 
   file = "ignore/m_synth_r_items"))
 pred <- conditional_effects(m_lmsynth_r_items, method = "predict")
@@ -192,15 +192,35 @@ rio::export(item_pair_table, "item_pair_table.xlsx")
 
 <details><summary>Robustness checks</summary>
 
+
+Is the accuracy lower within/across scales and instruments?
+
 ```{r}
 holdout_llm %>% 
   mutate(same_instrument = if_else(InstrumentA == InstrumentB, 1, 0,0),
          same_scale = if_else(ScaleA == ScaleB, 1,0,0),
          same_subscale = if_else(same_scale & SubscaleA == SubscaleB, 1,0,0)) %>% 
   group_by(same_scale, same_instrument, same_subscale) %>% 
-  summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), sd_er = sd(empirical_r), n = n()) %>% 
-  select(same_instrument, same_scale, same_subscale, r = estimate, conf.low, conf.high, n, sd_er) %>% 
-  arrange(same_instrument, same_scale, same_subscale)
+  summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), sd_emp_r = sd(empirical_r), n = n()) %>% 
+  select(same_instrument, same_scale, same_subscale, r = estimate, conf.low, conf.high, n, sd_emp_r) %>% 
+  arrange(same_instrument, same_scale, same_subscale) %>% 
+  kable()
+```
+
+Is the accuracy lower outside classic Big Five?
+
+```{r}
+holdout_llm %>% 
+  mutate(big_five = case_when(
+    str_detect(InstrumentA, "(Personality|Big Five)") & str_detect(InstrumentB, "(Personality|Big Five)") ~ "both",
+    str_detect(InstrumentA, "(Personality|Big Five)") | str_detect(InstrumentB, "(Personality|Big Five)") ~ "either",
+    TRUE ~ "none"
+         )) %>% 
+  group_by(big_five) %>% 
+  summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), sd_emp_r = sd(empirical_r), n = n()) %>% 
+  select(big_five, r = estimate, conf.low, conf.high, n, sd_emp_r) %>% 
+  arrange(big_five) %>% 
+  kable()
 ```
 
 </details>
