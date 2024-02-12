@@ -108,10 +108,15 @@ holdout_machine_data = arrow::read_feather(
 ## Join pairwise item correlations
 ```{r}
 join_pairwise_correlation = function(df_human, df_machine) {
-
     df_  = df_human %>% 
         cor(use = "p") %>% 
         reshape2::melt() %>% 
+        dplyr::left_join(
+          Hmisc::rcorr(as.matrix(holdout_human_data))$n %>% 
+          reshape2::melt() %>% 
+          dplyr::rename(pairwise_n = value),
+          by = c("Var1", "Var2")
+        ) %>% 
         dplyr::left_join(
             y = df_machine %>% 
             cor(use = "p") %>% 
@@ -131,8 +136,7 @@ join_pairwise_correlation = function(df_human, df_machine) {
 
 holdout_data = join_pairwise_correlation(holdout_human_data, holdout_machine_data)
 
-N <- holdout_human_data %>% summarise_all(~ sum(!is.na(.))) %>% min()
-holdout_data <- holdout_data %>% mutate(empirical_r_se = (1 - empirical_r^2)/sqrt(N - 2))
+holdout_data <- holdout_data %>% mutate(empirical_r_se = (1 - empirical_r^2)/sqrt(pairwise_n - 2))
 
 
 arrow::write_feather(holdout_data, sink = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))

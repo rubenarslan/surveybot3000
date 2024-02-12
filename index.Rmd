@@ -71,8 +71,7 @@ holdout_llm <- holdout %>%
 library(lavaan)
 
 
-holdout_llm <- holdout_llm %>% mutate(se = (1 - empirical_r^2)/sqrt(N - 2))
-se2 <- mean(holdout_llm$se^2)
+se2 <- mean(holdout_llm$empirical_r_se^2)
 
 r <- broom::tidy(cor.test(holdout_llm$empirical_r, holdout_llm$synthetic_r))
 
@@ -91,7 +90,7 @@ fit <- sem(model, data = holdout_llm)
 
 library(brms)
 m_synth_r_items <- brm(
-  bf(empirical_r | mi(se) ~ 1) +
+  bf(empirical_r | mi(empirical_r_se) ~ 1) +
   bf(synthetic_r ~ 1) + 
     set_rescor(T), data = holdout_llm, 
   file = "ignore/m_synth_r_items_r")
