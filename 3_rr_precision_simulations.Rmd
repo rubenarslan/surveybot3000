@@ -12,8 +12,7 @@ The following precision simulations all follow the same structure.
   of empirical estimates. SEs are estimated based on our planned N of 400.
 - We repeat this random drawing process many times.
 - We adjust for sampling error/the standard error of the empirical estimate to get the semi-latent accuracy.
-- The target quantity is the standard error of the semi-latent accuracy with 
-  which the synthetic estimates predicts the empirical estimates.
+- The target quantity is the average standard error of the semi-latent accuracy with which the synthetic estimates predicts the empirical estimates. We also report the maximal standard error across simulations.
 
 We begin with item correlations, then reliabilities, then scale correlations.
 
@@ -56,10 +55,13 @@ planned_N <- 400
 holdout <- arrow::read_feather(file = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))
 
 holdout_mapping_data = arrow::read_feather(
-  file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.mapping.feather"))
+  file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.mapping2.feather"))
 ) %>%
   rename(scale_0 = scale0,
          scale_1 = scale1)
+
+scales <- arrow::read_feather(file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.scales.feather"))
+)
 
 holdout_llm <- holdout %>%
   left_join(holdout_mapping_data %>% select(variable_1 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>%
@@ -117,39 +119,26 @@ cors_real <- holdout_llm %>%
   igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
 diag(cors_real) <- 1
 
-subscales <- holdout_mapping_data %>%
-  select(variable, instrument, scale_0, scale_1) %>%
-  distinct() %>%
-  mutate(instrument = coalesce(str_c(str_trim(instrument), "_"), ""),
-         scale_0 = coalesce(str_c(str_trim(scale_0), "_"), ""),
-         scale_1 = coalesce(str_trim(scale_1), ""),
-         scale = str_replace_all(paste0(instrument, scale_0, scale_1), "[^a-zA-Z_0-9]", "_")
-  )
-n_distinct(subscales$scale)
-
-scales <- holdout_mapping_data %>%
-  select(variable, instrument, scale_0, scale_1) %>%
-  distinct() %>%
-  mutate(instrument = coalesce(str_c(str_trim(instrument), "_"), ""),
-         scale_0 = coalesce(str_c(str_trim(scale_0), "_"), ""),
-         scale_1 = "",
-         scale = str_replace_all(paste0(instrument, scale_0, scale_1), "[^a-zA-Z_0-9]", "_")
-  )
-
-scales <- bind_rows(scales, subscales) %>% distinct() %>% filter(scale != "")
+mapping_data <- holdout_mapping_data
+items_by_scale <- bind_rows(
+  scales %>% filter(scale_1 == "") %>% left_join(mapping_data %>% select(-scale_1), by = c("instrument", "scale_0")),
+  scales %>% filter(scale_1 != "") %>% left_join(mapping_data, by = c("instrument", "scale_0", "scale_1"))
+)
+  
 n_distinct(scales$scale)
 
-scales <- scales %>%
-  group_by(scale) %>%
+scales <- items_by_scale %>%
+  group_by(keyed, scale) %>%
   summarise(
     items = list(variable),
     number_of_items = n_distinct(variable),
     lvn = paste(first(scale), " =~ ", paste(variable, collapse = " + "))) %>%
-  drop_na()
+  drop_na() %>% 
+  ungroup()
 
 random_scales <- list()
 for(i in 1:1000) {
-  n_items <- rpois(1, 10)
+  n_items <- rpois(1, mean(scales$number_of_items))
   n_items <- if_else(n_items < 3, 3, n_items)
   random_scales[[i]] <- holdout_mapping_data %>%
     sample_n(n_items) %>%
@@ -159,17 +148,23 @@ for(i in 1:1000) {
       items = list(variable),
       number_of_items = n_distinct(variable),
       lvn = paste(first(scale), " =~ ", paste(variable, collapse = " + "))) %>%
-    drop_na()
+    drop_na() %>% 
+    mutate(keyed = 1)
 }
 
 random_scales <- bind_rows(random_scales)
 scales <- bind_rows(scales, random_scales)
 n_distinct(scales$scale)
 
-find_reverse_items_by_first_item <- function(rs) {
+find_reverse_items_by_first_item <- function(rs, first_item_key) {
   # negatively correlated with first item
   items <- rs[-1, 1]
-  reverse_keyed_items <- names(items)[which(items < 0)]
+  if(first_item_key == 1) {
+    reversed <- which(items < 0)
+  } else {
+    reversed <- which(items > 0)
+  }
+  reverse_keyed_items <- names(items)[reversed]
   reverse_keyed_items
 }
 
@@ -195,7 +190,7 @@ scales <- scales %>%
   rowwise() %>%
   mutate(r_real = list(cors_real[items, items]),
          r_llm = list(cors_llm[items, items])) %>%
-  mutate(reverse_items = list(find_reverse_items_by_first_item(r_real)),
+  mutate(reverse_items = list(find_reverse_items_by_first_item(r_real, keyed)),
          r_real_rev = list(reverse_items(r_real, reverse_items)),
          r_llm_rev = list(reverse_items(r_llm, reverse_items))) %>%
   mutate(
@@ -246,9 +241,9 @@ for(i in 1:500) {
   )
 }
 sim_results %>% summarise(semi_latent_r = mean(est.std), mean_se = sqrt(mean(se^2)), max_se = max(se))
-
-scales %>% group_by(number_of_items) %>%
-  summarise(cor(rel_real_alpha, rel_llm_alpha), n())
+# 
+# scales %>% group_by(number_of_items) %>%
+#   summarise(cor(rel_real_alpha, rel_llm_alpha), n())
 ```
 
 
@@ -256,42 +251,6 @@ scales %>% group_by(number_of_items) %>%
 ```{r}
 manifest_scores = arrow::read_feather(file = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather")))
 
-n_distinct(manifest_scores$scale_a)
-
-manifest_scores <- manifest_scores %>% mutate(se = (1 - empirical_r^2)/sqrt(N - 2))
-se2 <- mean(manifest_scores$se^2)
-
-manifest_scores <- manifest_scores %>%
- left_join(scales, by = c("scale_a" = "scale")) %>%
- left_join(scales, by = c("scale_b" = "scale"))
-
-manifest_scores %>%
-  mutate(items = number_of_items.x + number_of_items.y) %>%
-  group_by(items) %>%
-  summarise(cor = cor(empirical_r, synthetic_r), n()) %>%
-  ggplot(aes(items, cor)) + geom_point()
-
-
-manifest_scores %>%
-  filter(number_of_items.x > 4, number_of_items.y > 4) %>%
-  summarise(cor = cor(empirical_r, synthetic_r), n())
-
-r <- broom::tidy(cor.test(manifest_scores$empirical_r, manifest_scores$synthetic_r))
-
-se2 <- mean(manifest_scores$empirical_r_se^2)
-model <- paste0('
-    # Latent variables
-    PearsonLatent =~ 1*empirical_r
-
-    # Fixing error variances based on known standard errors
-    empirical_r ~~ ',se2,'*empirical_r
-
-    # Relationship between latent variables
-    PearsonLatent ~~ synthetic_r
-  ')
-
-fit <- sem(model, data = manifest_scores)
-standardizedsolution(fit) %>% filter(lhs == "PearsonLatent", rhs ==  "synthetic_r")
 
 sim_results <- tibble()
 library(lavaan)

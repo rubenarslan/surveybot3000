@@ -152,16 +152,23 @@ plot_items
 ```
 
 ### Interactive plot
+This plot shows only 2000 randomly selected item pairs to conserve memory. A [full interactive plot](2_interactive_item_plot.html) exists, but may react slowly.
+
 ```{r}
-(holdout_llm %>% 
+item_pair_table <- holdout_llm %>% 
    left_join(holdout_mapping_data %>% select(variable_1 = variable,
                                              item_text_1 = item_text)) %>% 
    left_join(holdout_mapping_data %>% select(variable_2 = variable,
-                                             item_text_2 = item_text)) %>% 
+                                             item_text_2 = item_text))
+
+rio::export(item_pair_table, "ignore/item_pair_table.feather")
+
+(item_pair_table %>% 
   mutate(synthetic_r = round(synthetic_r, 2),
          empirical_r = round(empirical_r, 2),
          items = str_replace_all(str_c(item_text_1, "\n", item_text_2),
                                   "_+", " ")) %>% 
+    sample_df(2000) %>%
 ggplot(., aes(synthetic_r, empirical_r, 
               # ymin = empirical_r - empirical_r_se, 
               # ymax = empirical_r + empirical_r_se, 
@@ -173,25 +180,38 @@ ggplot(., aes(synthetic_r, empirical_r,
   theme_bw() +
   coord_fixed(xlim = c(-1,1), ylim = c(-1,1))) %>% 
   ggplotly()
+
+item_pair_table <- item_pair_table %>% 
+  mutate(empirical_r = sprintf("%.2f±%.3f", empirical_r,
+                                 empirical_r_se),
+           synthetic_r = sprintf("%.2f", synthetic_r)) %>% 
+  select(item_text_1, item_text_2, empirical_r, synthetic_r)
 ```
 
-<details><summary>Table</summary>
+<details><summary>Robustness checks</summary>
 
 ```{r}
 holdout_llm %>% 
-   left_join(holdout_mapping_data %>% select(variable_1 = variable,
-                                             item_text_1 = item_text)) %>% 
-   left_join(holdout_mapping_data %>% select(variable_2 = variable,
-                                             item_text_2 = item_text)) %>% 
-                mutate(empirical_r = sprintf("%.2f±%.3f", empirical_r,
-                                             empirical_r_se),
-                       synthetic_r = sprintf("%.2f", synthetic_r)) %>% 
-                select(item_text_1, item_text_2, empirical_r, synthetic_r) %>% 
-  DT::datatable(rownames = FALSE,
-                filter = "top")
+  mutate(same_instrument = if_else(InstrumentA == InstrumentB, 1, 0,0),
+         same_scale = if_else(ScaleA == ScaleB, 1,0,0),
+         same_subscale = if_else(same_scale & SubscaleA == SubscaleB, 1,0,0)) %>% 
+  group_by(same_scale, same_instrument, same_subscale) %>% 
+  summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), sd_er = sd(empirical_r), n = n()) %>% 
+  select(same_instrument, same_scale, same_subscale, r = estimate, conf.low, conf.high, n, sd_er) %>% 
+  arrange(same_instrument, same_scale, same_subscale)
 ```
 
 </details>
+
+```{r}
+rio::export(item_pair_table, "item_pair_table.xlsx")
+ # %>% 
+ #  DT::datatable(rownames = FALSE,
+ #                filter = "top")
+```
+
+[Table](item_pair_table.xlsx)
+
 
 ## Synthetic Reliabilities
 ```{r}
