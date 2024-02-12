@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Ruben Arslan" />
+
+<meta name="date" content="2023-11-07" />
+
+<title>Precision simulations</title>
+
+<script src="site_libs/header-attrs-2.25/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/paper.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<script src="site_libs/navigation-1.1/sourceembed.js"></script>
+<link href="site_libs/font-awesome-6.4.2/css/all.min.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet" />
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  { color: #cccccc; background-color: #303030; }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ffcfaf; } /* Alert */
+code span.an { color: #7f9f7f; font-weight: bold; } /* Annotation */
+code span.at { } /* Attribute */
+code span.bn { color: #dca3a3; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #f0dfaf; } /* ControlFlow */
+code span.ch { color: #dca3a3; } /* Char */
+code span.cn { color: #dca3a3; font-weight: bold; } /* Constant */
+code span.co { color: #7f9f7f; } /* Comment */
+code span.cv { color: #7f9f7f; font-weight: bold; } /* CommentVar */
+code span.do { color: #7f9f7f; } /* Documentation */
+code span.dt { color: #dfdfbf; } /* DataType */
+code span.dv { color: #dcdccc; } /* DecVal */
+code span.er { color: #c3bf9f; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #c0bed1; } /* Float */
+code span.fu { color: #efef8f; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #7f9f7f; font-weight: bold; } /* Information */
+code span.kw { color: #f0dfaf; } /* Keyword */
+code span.op { color: #f0efd0; } /* Operator */
+code span.ot { color: #efef8f; } /* Other */
+code span.pp { color: #ffcfaf; font-weight: bold; } /* Preprocessor */
+code span.sc { color: #dca3a3; } /* SpecialChar */
+code span.ss { color: #cc9393; } /* SpecialString */
+code span.st { color: #cc9393; } /* String */
+code span.va { } /* Variable */
+code span.vs { color: #cc9393; } /* VerbatimString */
+code span.wa { color: #7f9f7f; font-weight: bold; } /* Warning */
+
+.sourceCode .row {
+  width: 100%;
+}
+.sourceCode {
+  overflow-x: auto;
+}
+.code-folding-btn {
+  margin-right: -30px;
+}
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+<style type="text/css">
+#rmd-source-code {
+  display: none;
+}
+</style>
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">SurveyBot3000</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Overview</a>
+</li>
+<li>
+  <a href="1_vector_to_cosine.html">Vector to Cosine</a>
+</li>
+<li>
+  <a href="3_rr_precision_simulations.html">Precision simulations</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="https://github.com/rubenarslan/items_llm">
+    <span class="fa fa-github"></span>
+     
+    
+  </a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+<li role="separator" class="divider"></li>
+<li><a id="rmd-download-source" href="#">Download Rmd</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">Precision simulations</h1>
+<h4 class="author">Ruben Arslan</h4>
+<h4 class="date">2023-11-07</h4>
+
+</div>
+
+
+<p>The following precision simulations all follow the same
+structure.</p>
+<ul>
+<li>We randomly redraw from our holdout data to get realistic
+distributions of empirical estimates. SEs are estimated based on our
+planned N of 400.</li>
+<li>We repeat this random drawing process many times.</li>
+<li>We adjust for sampling error/the standard error of the empirical
+estimate to get the semi-latent accuracy.</li>
+<li>The target quantity is the average standard error of the semi-latent
+accuracy with which the synthetic estimates predicts the empirical
+estimates. We also report the maximal standard error across
+simulations.</li>
+</ul>
+<p>We begin with item correlations, then reliabilities, then scale
+correlations.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>knitr<span class="sc">::</span>opts_chunk<span class="sc">$</span><span class="fu">set</span>(<span class="at">echo =</span> <span class="cn">TRUE</span>, <span class="at">error =</span> T)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="co"># Libraries and Settings</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="co"># Libs ---------------------------</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="fu">library</span>(arrow)</span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="fu">library</span>(glue)</span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="fu">library</span>(psych)</span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="fu">library</span>(lavaan)</span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a><span class="fu">library</span>(plotly)</span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a><span class="fu">library</span>(gridExtra)</span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a><span class="fu">library</span>(semTools)</span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a><span class="fu">library</span>(semPlot)</span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a></span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a>model_name <span class="ot">=</span> <span class="st">&quot;ItemSimilarityTraining-20240502-trial12&quot;</span></span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a><span class="co">#model_name = &quot;item-similarity-20231018-122504&quot;</span></span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a>pretrained_model_name <span class="ot">=</span> <span class="st">&quot;all-mpnet-base-v2&quot;</span></span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a></span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a>data_path <span class="ot">=</span> <span class="fu">glue</span>(<span class="st">&quot;./&quot;</span>)</span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a>pretrained_data_path <span class="ot">=</span> <span class="fu">glue</span>(<span class="st">&quot;./&quot;</span>)</span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
+<span id="cb1-25"><a href="#cb1-25" tabindex="-1"></a></span>
+<span id="cb1-26"><a href="#cb1-26" tabindex="-1"></a>number_of_items <span class="ot">&lt;-</span> <span class="dv">175</span></span>
+<span id="cb1-27"><a href="#cb1-27" tabindex="-1"></a>number_of_scales <span class="ot">&lt;-</span> <span class="dv">40</span></span>
+<span id="cb1-28"><a href="#cb1-28" tabindex="-1"></a>combinations_items <span class="ot">&lt;-</span> <span class="fu">choose</span>(number_of_items, <span class="dv">2</span>)</span>
+<span id="cb1-29"><a href="#cb1-29" tabindex="-1"></a>combinations_scales <span class="ot">&lt;-</span> <span class="fu">choose</span>(number_of_scales, <span class="dv">2</span>)</span>
+<span id="cb1-30"><a href="#cb1-30" tabindex="-1"></a>planned_N <span class="ot">&lt;-</span> <span class="dv">400</span></span></code></pre></div>
+<div id="precision-simulation-for-synthetic-inter-item-correlations"
+class="section level2">
+<h2>Precision simulation for synthetic inter-item correlations</h2>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>holdout <span class="ot">&lt;-</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(<span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather&quot;</span>)))</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>holdout_mapping_data <span class="ot">=</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>  <span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;{model_name}.raw.osf-bainbridge-2021-s2-0.mapping2.feather&quot;</span>))</span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">scale_0 =</span> scale0,</span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>         <span class="at">scale_1 =</span> scale1)</span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>scales <span class="ot">&lt;-</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(<span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;{model_name}.raw.osf-bainbridge-2021-s2-0.scales.feather&quot;</span>))</span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>)</span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a>holdout_llm <span class="ot">&lt;-</span> holdout <span class="sc">%&gt;%</span></span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a>  <span class="fu">left_join</span>(holdout_mapping_data <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="at">variable_1 =</span> variable, <span class="at">InstrumentA =</span> instrument, <span class="at">ScaleA =</span> scale_0, <span class="at">SubscaleA =</span> scale_1)) <span class="sc">%&gt;%</span></span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a>  <span class="fu">left_join</span>(holdout_mapping_data <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="at">variable_2 =</span> variable, <span class="at">InstrumentA =</span> instrument, <span class="at">ScaleA =</span> scale_0, <span class="at">SubscaleA =</span> scale_1))</span></code></pre></div>
+<pre><code>## Joining with `by = join_by(variable_1)`
+## Joining with `by = join_by(variable_2, InstrumentA, ScaleA, SubscaleA)`</code></pre>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>sim_results <span class="ot">&lt;-</span> <span class="fu">tibble</span>()</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="fu">library</span>(lavaan)</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">500</span>) {</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>  items <span class="ot">&lt;-</span> holdout <span class="sc">%&gt;%</span> <span class="fu">select</span>(variable_1) <span class="sc">%&gt;%</span> <span class="fu">distinct</span>() <span class="sc">%&gt;%</span> <span class="fu">sample_n</span>(<span class="dv">175</span>) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(variable_1)</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>  subset <span class="ot">&lt;-</span> holdout <span class="sc">%&gt;%</span> <span class="fu">filter</span>(variable_1 <span class="sc">%in%</span> items, variable_2 <span class="sc">%in%</span> items)</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>  N <span class="ot">&lt;-</span> planned_N</span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>  subset <span class="ot">&lt;-</span> subset <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">se =</span> (<span class="dv">1</span> <span class="sc">-</span> empirical_r<span class="sc">^</span><span class="dv">2</span>)<span class="sc">/</span><span class="fu">sqrt</span>(N <span class="sc">-</span> <span class="dv">2</span>))</span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>  se2 <span class="ot">&lt;-</span> <span class="fu">mean</span>(subset<span class="sc">$</span>se<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a>  r <span class="ot">&lt;-</span> broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">cor.test</span>(subset<span class="sc">$</span>empirical_r, subset<span class="sc">$</span>synthetic_r))</span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a></span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a>  model <span class="ot">&lt;-</span> <span class="fu">paste0</span>(<span class="st">&#39;</span></span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a><span class="st">    # Latent variables</span></span>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a><span class="st">    PearsonLatent =~ 1*empirical_r</span></span>
+<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a></span>
+<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a><span class="st">    # Fixing error variances based on known standard errors</span></span>
+<span id="cb4-20"><a href="#cb4-20" tabindex="-1"></a><span class="st">    empirical_r ~~ &#39;</span>,se2,<span class="st">&#39;*empirical_r</span></span>
+<span id="cb4-21"><a href="#cb4-21" tabindex="-1"></a></span>
+<span id="cb4-22"><a href="#cb4-22" tabindex="-1"></a><span class="st">    # Relationship between latent variables</span></span>
+<span id="cb4-23"><a href="#cb4-23" tabindex="-1"></a><span class="st">    PearsonLatent ~~ synthetic_r</span></span>
+<span id="cb4-24"><a href="#cb4-24" tabindex="-1"></a><span class="st">  &#39;</span>)</span>
+<span id="cb4-25"><a href="#cb4-25" tabindex="-1"></a></span>
+<span id="cb4-26"><a href="#cb4-26" tabindex="-1"></a>  fit <span class="ot">&lt;-</span> <span class="fu">sem</span>(model, <span class="at">data =</span> subset)</span>
+<span id="cb4-27"><a href="#cb4-27" tabindex="-1"></a></span>
+<span id="cb4-28"><a href="#cb4-28" tabindex="-1"></a>  sim_results <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(sim_results,</span>
+<span id="cb4-29"><a href="#cb4-29" tabindex="-1"></a>    <span class="fu">standardizedsolution</span>(fit) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(lhs <span class="sc">==</span> <span class="st">&quot;PearsonLatent&quot;</span>, rhs <span class="sc">==</span>  <span class="st">&quot;synthetic_r&quot;</span>)</span>
+<span id="cb4-30"><a href="#cb4-30" tabindex="-1"></a>  )</span>
+<span id="cb4-31"><a href="#cb4-31" tabindex="-1"></a>}</span>
+<span id="cb4-32"><a href="#cb4-32" tabindex="-1"></a></span>
+<span id="cb4-33"><a href="#cb4-33" tabindex="-1"></a>sim_results <span class="sc">%&gt;%</span> <span class="fu">summarise</span>(<span class="at">semi_latent_r =</span> <span class="fu">mean</span>(est.std), <span class="at">mean_se =</span> <span class="fu">sqrt</span>(<span class="fu">mean</span>(se<span class="sc">^</span><span class="dv">2</span>)), <span class="at">max_se =</span> <span class="fu">max</span>(se))</span></code></pre></div>
+<pre><code>## # A tibble: 1 × 3
+##   semi_latent_r mean_se  max_se
+##           &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;
+## 1         0.706 0.00316 0.00375</code></pre>
+</div>
+<div id="precision-simulation-for-synthetic-reliabilities"
+class="section level2">
+<h2>Precision simulation for synthetic reliabilities</h2>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>cors_llm <span class="ot">&lt;-</span> holdout_llm <span class="sc">%&gt;%</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  <span class="fu">select</span>(<span class="at">x =</span> variable_1, <span class="at">y =</span> variable_2, <span class="at">r =</span> synthetic_r) <span class="sc">%&gt;%</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  <span class="fu">as.data.frame</span>() <span class="sc">|&gt;</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  igraph<span class="sc">::</span><span class="fu">graph_from_data_frame</span>(<span class="at">directed =</span> <span class="cn">FALSE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>  igraph<span class="sc">::</span><span class="fu">as_adjacency_matrix</span>(<span class="at">attr =</span> <span class="st">&quot;r&quot;</span>, <span class="at">sparse =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="fu">diag</span>(cors_llm) <span class="ot">&lt;-</span> <span class="dv">1</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>cors_real <span class="ot">&lt;-</span> holdout_llm <span class="sc">%&gt;%</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>  <span class="fu">select</span>(<span class="at">x =</span> variable_1, <span class="at">y =</span> variable_2, <span class="at">r =</span> empirical_r) <span class="sc">%&gt;%</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>  <span class="fu">as.data.frame</span>() <span class="sc">|&gt;</span></span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>  igraph<span class="sc">::</span><span class="fu">graph_from_data_frame</span>(<span class="at">directed =</span> <span class="cn">FALSE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>  igraph<span class="sc">::</span><span class="fu">as_adjacency_matrix</span>(<span class="at">attr =</span> <span class="st">&quot;r&quot;</span>, <span class="at">sparse =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a><span class="fu">diag</span>(cors_real) <span class="ot">&lt;-</span> <span class="dv">1</span></span>
+<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a></span>
+<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a>mapping_data <span class="ot">&lt;-</span> holdout_mapping_data</span>
+<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a>items_by_scale <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
+<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a>  scales <span class="sc">%&gt;%</span> <span class="fu">filter</span>(scale_1 <span class="sc">==</span> <span class="st">&quot;&quot;</span>) <span class="sc">%&gt;%</span> <span class="fu">left_join</span>(mapping_data <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="sc">-</span>scale_1), <span class="at">by =</span> <span class="fu">c</span>(<span class="st">&quot;instrument&quot;</span>, <span class="st">&quot;scale_0&quot;</span>)),</span>
+<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a>  scales <span class="sc">%&gt;%</span> <span class="fu">filter</span>(scale_1 <span class="sc">!=</span> <span class="st">&quot;&quot;</span>) <span class="sc">%&gt;%</span> <span class="fu">left_join</span>(mapping_data, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">&quot;instrument&quot;</span>, <span class="st">&quot;scale_0&quot;</span>, <span class="st">&quot;scale_1&quot;</span>))</span>
+<span id="cb6-19"><a href="#cb6-19" tabindex="-1"></a>)</span>
+<span id="cb6-20"><a href="#cb6-20" tabindex="-1"></a>  </span>
+<span id="cb6-21"><a href="#cb6-21" tabindex="-1"></a><span class="fu">n_distinct</span>(scales<span class="sc">$</span>scale)</span></code></pre></div>
+<pre><code>## [1] 113</code></pre>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>scales <span class="ot">&lt;-</span> items_by_scale <span class="sc">%&gt;%</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  <span class="fu">group_by</span>(keyed, scale) <span class="sc">%&gt;%</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>    <span class="at">items =</span> <span class="fu">list</span>(variable),</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>    <span class="at">number_of_items =</span> <span class="fu">n_distinct</span>(variable),</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>    <span class="at">lvn =</span> <span class="fu">paste</span>(<span class="fu">first</span>(scale), <span class="st">&quot; =~ &quot;</span>, <span class="fu">paste</span>(variable, <span class="at">collapse =</span> <span class="st">&quot; + &quot;</span>))) <span class="sc">%&gt;%</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>  <span class="fu">drop_na</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span></code></pre></div>
+<pre><code>## `summarise()` has grouped output by &#39;keyed&#39;. You can override using the
+## `.groups` argument.</code></pre>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>random_scales <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">1000</span>) {</span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>  n_items <span class="ot">&lt;-</span> <span class="fu">rpois</span>(<span class="dv">1</span>, <span class="fu">mean</span>(scales<span class="sc">$</span>number_of_items))</span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>  n_items <span class="ot">&lt;-</span> <span class="fu">if_else</span>(n_items <span class="sc">&lt;</span> <span class="dv">3</span>, <span class="dv">3</span>, n_items)</span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>  random_scales[[i]] <span class="ot">&lt;-</span> holdout_mapping_data <span class="sc">%&gt;%</span></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a>    <span class="fu">sample_n</span>(n_items) <span class="sc">%&gt;%</span></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">scale =</span> <span class="fu">paste0</span>(<span class="st">&quot;random&quot;</span>, i)) <span class="sc">%&gt;%</span></span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a>    <span class="fu">group_by</span>(scale) <span class="sc">%&gt;%</span></span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a>    <span class="fu">summarise</span>(</span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a>      <span class="at">items =</span> <span class="fu">list</span>(variable),</span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a>      <span class="at">number_of_items =</span> <span class="fu">n_distinct</span>(variable),</span>
+<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a>      <span class="at">lvn =</span> <span class="fu">paste</span>(<span class="fu">first</span>(scale), <span class="st">&quot; =~ &quot;</span>, <span class="fu">paste</span>(variable, <span class="at">collapse =</span> <span class="st">&quot; + &quot;</span>))) <span class="sc">%&gt;%</span></span>
+<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a>    <span class="fu">drop_na</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">keyed =</span> <span class="dv">1</span>)</span>
+<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a>}</span>
+<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a></span>
+<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a>random_scales <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(random_scales)</span>
+<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a>scales <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(scales, random_scales)</span>
+<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a><span class="fu">n_distinct</span>(scales<span class="sc">$</span>scale)</span></code></pre></div>
+<pre><code>## [1] 1113</code></pre>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="fu">source</span>(<span class="st">&quot;global_functions.R&quot;</span>)</span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>scales <span class="ot">&lt;-</span> scales <span class="sc">%&gt;%</span> <span class="fu">filter</span>(number_of_items <span class="sc">&gt;=</span> <span class="dv">3</span>)</span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a></span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>scales <span class="ot">&lt;-</span> scales <span class="sc">%&gt;%</span></span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a>  <span class="fu">rowwise</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">r_real =</span> <span class="fu">list</span>(cors_real[items, items]),</span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>         <span class="at">r_llm =</span> <span class="fu">list</span>(cors_llm[items, items])) <span class="sc">%&gt;%</span></span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">reverse_items =</span> <span class="fu">list</span>(<span class="fu">find_reverse_items_by_first_item</span>(r_real, keyed)),</span>
+<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a>         <span class="at">r_real_rev =</span> <span class="fu">list</span>(<span class="fu">reverse_items</span>(r_real, reverse_items)),</span>
+<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a>         <span class="at">r_llm_rev =</span> <span class="fu">list</span>(<span class="fu">reverse_items</span>(r_llm, reverse_items))) <span class="sc">%&gt;%</span></span>
+<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb12-13"><a href="#cb12-13" tabindex="-1"></a>    <span class="at">rel_real =</span> <span class="fu">list</span>(psych<span class="sc">::</span><span class="fu">alpha</span>(r_real_rev, <span class="at">keys =</span> F, <span class="at">n.obs =</span> planned_N)<span class="sc">$</span>feldt)) <span class="sc">%&gt;%</span></span>
+<span id="cb12-14"><a href="#cb12-14" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb12-15"><a href="#cb12-15" tabindex="-1"></a>    <span class="at">rel_llm =</span> <span class="fu">list</span>(psych<span class="sc">::</span><span class="fu">alpha</span>(r_llm_rev, <span class="at">keys =</span> F, <span class="at">n.obs =</span> planned_N)<span class="sc">$</span>feldt)) <span class="sc">%&gt;%</span></span>
+<span id="cb12-16"><a href="#cb12-16" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">rel_real_alpha =</span> rel_real<span class="sc">$</span>alpha<span class="sc">$</span>raw_alpha,</span>
+<span id="cb12-17"><a href="#cb12-17" tabindex="-1"></a>         <span class="at">rel_llm_alpha =</span> rel_llm<span class="sc">$</span>alpha<span class="sc">$</span>raw_alpha) <span class="sc">%&gt;%</span></span>
+<span id="cb12-18"><a href="#cb12-18" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb12-19"><a href="#cb12-19" tabindex="-1"></a>    <span class="at">alpha_se =</span> <span class="fu">mean</span>(<span class="fu">diff</span>(<span class="fu">unlist</span>(psychometric<span class="sc">::</span><span class="fu">alpha.CI</span>(rel_real_alpha, <span class="at">k =</span> number_of_items, <span class="at">N =</span> planned_N, <span class="at">level =</span> <span class="fl">0.95</span>))))</span>
+<span id="cb12-20"><a href="#cb12-20" tabindex="-1"></a>  )</span></code></pre></div>
+<pre><code>## Warning: There were 12 warnings in `mutate()`.
+## The first warning was:
+## ℹ In argument: `rel_real = list(psych::alpha(r_real_rev, keys = F, n.obs =
+##   planned_N)$feldt)`.
+## ℹ In row 133.
+## Caused by warning in `sqrt()`:
+## ! NaNs produced
+## ℹ Run `dplyr::last_dplyr_warnings()` to see the 11 remaining warnings.</code></pre>
+<pre><code>## Warning: There were 67 warnings in `mutate()`.
+## The first warning was:
+## ℹ In argument: `rel_llm = list(psych::alpha(r_llm_rev, keys = F, n.obs =
+##   planned_N)$feldt)`.
+## ℹ In row 63.
+## Caused by warning in `sqrt()`:
+## ! NaNs produced
+## ℹ Run `dplyr::last_dplyr_warnings()` to see the 66 remaining warnings.</code></pre>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="fu">qplot</span>(scales<span class="sc">$</span>alpha_se)</span></code></pre></div>
+<pre><code>## Warning: `qplot()` was deprecated in ggplot2 3.4.0.
+## This warning is displayed once every 8 hours.
+## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
+## generated.</code></pre>
+<pre><code>## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
+<p><img src="3_rr_precision_simulations_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="fu">qplot</span>(scales<span class="sc">$</span>rel_real_alpha, scales<span class="sc">$</span>alpha_se)</span></code></pre></div>
+<p><img src="3_rr_precision_simulations_files/figure-html/unnamed-chunk-3-2.png" width="672" /></p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a><span class="fu">qplot</span>(scales<span class="sc">$</span>number_of_items, scales<span class="sc">$</span>alpha_se)</span></code></pre></div>
+<p><img src="3_rr_precision_simulations_files/figure-html/unnamed-chunk-3-3.png" width="672" /></p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="fu">qplot</span>(scales<span class="sc">$</span>rel_real_alpha, scales<span class="sc">$</span>alpha_se, <span class="at">color =</span> scales<span class="sc">$</span>number_of_items)</span></code></pre></div>
+<p><img src="3_rr_precision_simulations_files/figure-html/unnamed-chunk-3-4.png" width="672" /></p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a>realistic_scales <span class="ot">&lt;-</span> scales <span class="sc">%&gt;%</span> <span class="fu">ungroup</span>()</span>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a></span>
+<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a>sim_results <span class="ot">&lt;-</span> <span class="fu">tibble</span>()</span>
+<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">500</span>) {</span>
+<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a>  picked_scales <span class="ot">&lt;-</span> realistic_scales <span class="sc">%&gt;%</span> <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">str_detect</span>(scale, <span class="st">&quot;random&quot;</span>)) <span class="sc">%&gt;%</span> <span class="fu">sample_n</span>(number_of_scales)</span>
+<span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a>  subset <span class="ot">&lt;-</span></span>
+<span id="cb21-7"><a href="#cb21-7" tabindex="-1"></a>    <span class="fu">bind_rows</span>(picked_scales,</span>
+<span id="cb21-8"><a href="#cb21-8" tabindex="-1"></a>              realistic_scales <span class="sc">%&gt;%</span> <span class="fu">filter</span>(<span class="fu">str_detect</span>(scale, <span class="st">&quot;random&quot;</span>)) <span class="sc">%&gt;%</span> <span class="fu">sample_n</span>(<span class="dv">200</span>)</span>
+<span id="cb21-9"><a href="#cb21-9" tabindex="-1"></a>  )</span>
+<span id="cb21-10"><a href="#cb21-10" tabindex="-1"></a></span>
+<span id="cb21-11"><a href="#cb21-11" tabindex="-1"></a>  se2 <span class="ot">&lt;-</span> <span class="fu">mean</span>(subset<span class="sc">$</span>alpha_se<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb21-12"><a href="#cb21-12" tabindex="-1"></a></span>
+<span id="cb21-13"><a href="#cb21-13" tabindex="-1"></a>  r <span class="ot">&lt;-</span> broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">cor.test</span>(subset<span class="sc">$</span>rel_real_alpha, subset<span class="sc">$</span>rel_llm_alpha))</span>
+<span id="cb21-14"><a href="#cb21-14" tabindex="-1"></a>  (r<span class="sc">$</span>conf.high <span class="sc">-</span> r<span class="sc">$</span>conf.low)<span class="sc">/</span><span class="dv">2</span></span>
+<span id="cb21-15"><a href="#cb21-15" tabindex="-1"></a></span>
+<span id="cb21-16"><a href="#cb21-16" tabindex="-1"></a>  model <span class="ot">&lt;-</span> <span class="fu">paste0</span>(<span class="st">&#39;</span></span>
+<span id="cb21-17"><a href="#cb21-17" tabindex="-1"></a><span class="st">    # Latent variables</span></span>
+<span id="cb21-18"><a href="#cb21-18" tabindex="-1"></a><span class="st">    PearsonLatent =~ 1*rel_real_alpha</span></span>
+<span id="cb21-19"><a href="#cb21-19" tabindex="-1"></a></span>
+<span id="cb21-20"><a href="#cb21-20" tabindex="-1"></a><span class="st">    # Fixing error variances based on known standard errors</span></span>
+<span id="cb21-21"><a href="#cb21-21" tabindex="-1"></a><span class="st">    rel_real_alpha ~~ &#39;</span>,se2,<span class="st">&#39;*rel_real_alpha</span></span>
+<span id="cb21-22"><a href="#cb21-22" tabindex="-1"></a></span>
+<span id="cb21-23"><a href="#cb21-23" tabindex="-1"></a><span class="st">    # Relationship between latent variables</span></span>
+<span id="cb21-24"><a href="#cb21-24" tabindex="-1"></a><span class="st">    PearsonLatent ~~ rel_llm_alpha</span></span>
+<span id="cb21-25"><a href="#cb21-25" tabindex="-1"></a><span class="st">  &#39;</span>)</span>
+<span id="cb21-26"><a href="#cb21-26" tabindex="-1"></a></span>
+<span id="cb21-27"><a href="#cb21-27" tabindex="-1"></a>  fit <span class="ot">&lt;-</span> <span class="fu">sem</span>(model, <span class="at">data =</span> subset)</span>
+<span id="cb21-28"><a href="#cb21-28" tabindex="-1"></a></span>
+<span id="cb21-29"><a href="#cb21-29" tabindex="-1"></a>  sim_results <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(sim_results,</span>
+<span id="cb21-30"><a href="#cb21-30" tabindex="-1"></a>                           <span class="fu">standardizedsolution</span>(fit) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(lhs <span class="sc">==</span> <span class="st">&quot;PearsonLatent&quot;</span>, rhs <span class="sc">==</span>  <span class="st">&quot;rel_llm_alpha&quot;</span>)</span>
+<span id="cb21-31"><a href="#cb21-31" tabindex="-1"></a>  )</span>
+<span id="cb21-32"><a href="#cb21-32" tabindex="-1"></a>}</span>
+<span id="cb21-33"><a href="#cb21-33" tabindex="-1"></a>sim_results <span class="sc">%&gt;%</span> <span class="fu">summarise</span>(<span class="at">semi_latent_r =</span> <span class="fu">mean</span>(est.std), <span class="at">mean_se =</span> <span class="fu">sqrt</span>(<span class="fu">mean</span>(se<span class="sc">^</span><span class="dv">2</span>)), <span class="at">max_se =</span> <span class="fu">max</span>(se))</span></code></pre></div>
+<pre><code>## # A tibble: 1 × 3
+##   semi_latent_r mean_se max_se
+##           &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;
+## 1         0.890  0.0218 0.0314</code></pre>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb23-2"><a href="#cb23-2" tabindex="-1"></a><span class="co"># scales %&gt;% group_by(number_of_items) %&gt;%</span></span>
+<span id="cb23-3"><a href="#cb23-3" tabindex="-1"></a><span class="co">#   summarise(cor(rel_real_alpha, rel_llm_alpha), n())</span></span></code></pre></div>
+</div>
+<div id="precision-simulation-for-synthetic-scale-correlations"
+class="section level2">
+<h2>Precision simulation for synthetic scale correlations</h2>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" tabindex="-1"></a>manifest_scores <span class="ot">=</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(<span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather&quot;</span>)))</span>
+<span id="cb24-2"><a href="#cb24-2" tabindex="-1"></a></span>
+<span id="cb24-3"><a href="#cb24-3" tabindex="-1"></a></span>
+<span id="cb24-4"><a href="#cb24-4" tabindex="-1"></a>sim_results <span class="ot">&lt;-</span> <span class="fu">tibble</span>()</span>
+<span id="cb24-5"><a href="#cb24-5" tabindex="-1"></a><span class="fu">library</span>(lavaan)</span>
+<span id="cb24-6"><a href="#cb24-6" tabindex="-1"></a></span>
+<span id="cb24-7"><a href="#cb24-7" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">500</span>) {</span>
+<span id="cb24-8"><a href="#cb24-8" tabindex="-1"></a>  scales <span class="ot">&lt;-</span> manifest_scores <span class="sc">%&gt;%</span> <span class="fu">select</span>(scale_a) <span class="sc">%&gt;%</span> <span class="fu">distinct</span>() <span class="sc">%&gt;%</span> <span class="fu">sample_n</span>(number_of_scales) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(scale_a)</span>
+<span id="cb24-9"><a href="#cb24-9" tabindex="-1"></a></span>
+<span id="cb24-10"><a href="#cb24-10" tabindex="-1"></a>  subset <span class="ot">&lt;-</span> manifest_scores <span class="sc">%&gt;%</span> <span class="fu">filter</span>(scale_a <span class="sc">%in%</span> scales, scale_b <span class="sc">%in%</span> scales)</span>
+<span id="cb24-11"><a href="#cb24-11" tabindex="-1"></a></span>
+<span id="cb24-12"><a href="#cb24-12" tabindex="-1"></a>  N <span class="ot">&lt;-</span> planned_N</span>
+<span id="cb24-13"><a href="#cb24-13" tabindex="-1"></a>  subset <span class="ot">&lt;-</span> subset <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">se =</span> (<span class="dv">1</span> <span class="sc">-</span> empirical_r<span class="sc">^</span><span class="dv">2</span>)<span class="sc">/</span><span class="fu">sqrt</span>(N <span class="sc">-</span> <span class="dv">2</span>))</span>
+<span id="cb24-14"><a href="#cb24-14" tabindex="-1"></a>  se2 <span class="ot">&lt;-</span> <span class="fu">mean</span>(subset<span class="sc">$</span>se<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb24-15"><a href="#cb24-15" tabindex="-1"></a></span>
+<span id="cb24-16"><a href="#cb24-16" tabindex="-1"></a>  r <span class="ot">&lt;-</span> broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">cor.test</span>(subset<span class="sc">$</span>empirical_r, subset<span class="sc">$</span>synthetic_r))</span>
+<span id="cb24-17"><a href="#cb24-17" tabindex="-1"></a>  (r<span class="sc">$</span>conf.high <span class="sc">-</span> r<span class="sc">$</span>conf.low)<span class="sc">/</span><span class="dv">2</span></span>
+<span id="cb24-18"><a href="#cb24-18" tabindex="-1"></a></span>
+<span id="cb24-19"><a href="#cb24-19" tabindex="-1"></a>  model <span class="ot">&lt;-</span> <span class="fu">paste0</span>(<span class="st">&#39;</span></span>
+<span id="cb24-20"><a href="#cb24-20" tabindex="-1"></a><span class="st">    # Latent variables</span></span>
+<span id="cb24-21"><a href="#cb24-21" tabindex="-1"></a><span class="st">    PearsonLatent =~ 1*empirical_r</span></span>
+<span id="cb24-22"><a href="#cb24-22" tabindex="-1"></a></span>
+<span id="cb24-23"><a href="#cb24-23" tabindex="-1"></a><span class="st">    # Fixing error variances based on known standard errors</span></span>
+<span id="cb24-24"><a href="#cb24-24" tabindex="-1"></a><span class="st">    empirical_r ~~ &#39;</span>,se2,<span class="st">&#39;*empirical_r</span></span>
+<span id="cb24-25"><a href="#cb24-25" tabindex="-1"></a></span>
+<span id="cb24-26"><a href="#cb24-26" tabindex="-1"></a><span class="st">    # Relationship between latent variables</span></span>
+<span id="cb24-27"><a href="#cb24-27" tabindex="-1"></a><span class="st">    PearsonLatent ~~ synthetic_r</span></span>
+<span id="cb24-28"><a href="#cb24-28" tabindex="-1"></a><span class="st">  &#39;</span>)</span>
+<span id="cb24-29"><a href="#cb24-29" tabindex="-1"></a></span>
+<span id="cb24-30"><a href="#cb24-30" tabindex="-1"></a>  fit <span class="ot">&lt;-</span> <span class="fu">sem</span>(model, <span class="at">data =</span> subset)</span>
+<span id="cb24-31"><a href="#cb24-31" tabindex="-1"></a></span>
+<span id="cb24-32"><a href="#cb24-32" tabindex="-1"></a>  sim_results <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(sim_results,</span>
+<span id="cb24-33"><a href="#cb24-33" tabindex="-1"></a>                           <span class="fu">standardizedsolution</span>(fit) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(lhs <span class="sc">==</span> <span class="st">&quot;PearsonLatent&quot;</span>, rhs <span class="sc">==</span>  <span class="st">&quot;synthetic_r&quot;</span>)</span>
+<span id="cb24-34"><a href="#cb24-34" tabindex="-1"></a>  )</span>
+<span id="cb24-35"><a href="#cb24-35" tabindex="-1"></a>}</span>
+<span id="cb24-36"><a href="#cb24-36" tabindex="-1"></a></span>
+<span id="cb24-37"><a href="#cb24-37" tabindex="-1"></a>sim_results <span class="sc">%&gt;%</span> <span class="fu">summarise</span>(<span class="at">semi_latent_r =</span> <span class="fu">mean</span>(est.std), <span class="at">mean_se =</span> <span class="fu">sqrt</span>(<span class="fu">mean</span>(se<span class="sc">^</span><span class="dv">2</span>)), <span class="at">max_se =</span> <span class="fu">max</span>(se))</span></code></pre></div>
+<pre><code>## # A tibble: 1 × 3
+##   semi_latent_r mean_se max_se
+##           &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;
+## 1         0.880 0.00880 0.0145</code></pre>
+</div>
+
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiUHJlY2lzaW9uIHNpbXVsYXRpb25zIgphdXRob3I6ICJSdWJlbiBBcnNsYW4iCmRhdGU6ICIyMDIzLTExLTA3IgpvdXRwdXQ6IGh0bWxfZG9jdW1lbnQKLS0tCgoKVGhlIGZvbGxvd2luZyBwcmVjaXNpb24gc2ltdWxhdGlvbnMgYWxsIGZvbGxvdyB0aGUgc2FtZSBzdHJ1Y3R1cmUuCgotIFdlIHJhbmRvbWx5IHJlZHJhdyBmcm9tIG91ciBob2xkb3V0IGRhdGEgdG8gZ2V0IHJlYWxpc3RpYyBkaXN0cmlidXRpb25zCiAgb2YgZW1waXJpY2FsIGVzdGltYXRlcy4gU0VzIGFyZSBlc3RpbWF0ZWQgYmFzZWQgb24gb3VyIHBsYW5uZWQgTiBvZiA0MDAuCi0gV2UgcmVwZWF0IHRoaXMgcmFuZG9tIGRyYXdpbmcgcHJvY2VzcyBtYW55IHRpbWVzLgotIFdlIGFkanVzdCBmb3Igc2FtcGxpbmcgZXJyb3IvdGhlIHN0YW5kYXJkIGVycm9yIG9mIHRoZSBlbXBpcmljYWwgZXN0aW1hdGUgdG8gZ2V0IHRoZSBzZW1pLWxhdGVudCBhY2N1cmFjeS4KLSBUaGUgdGFyZ2V0IHF1YW50aXR5IGlzIHRoZSBhdmVyYWdlIHN0YW5kYXJkIGVycm9yIG9mIHRoZSBzZW1pLWxhdGVudCBhY2N1cmFjeSB3aXRoIHdoaWNoIHRoZSBzeW50aGV0aWMgZXN0aW1hdGVzIHByZWRpY3RzIHRoZSBlbXBpcmljYWwgZXN0aW1hdGVzLiBXZSBhbHNvIHJlcG9ydCB0aGUgbWF4aW1hbCBzdGFuZGFyZCBlcnJvciBhY3Jvc3Mgc2ltdWxhdGlvbnMuCgpXZSBiZWdpbiB3aXRoIGl0ZW0gY29ycmVsYXRpb25zLCB0aGVuIHJlbGlhYmlsaXRpZXMsIHRoZW4gc2NhbGUgY29ycmVsYXRpb25zLgoKYGBge3Igd2FybmluZz1GLG1lc3NhZ2U9Rn0Ka25pdHI6Om9wdHNfY2h1bmskc2V0KGVjaG8gPSBUUlVFLCBlcnJvciA9IFQpCgojIExpYnJhcmllcyBhbmQgU2V0dGluZ3MKCiMgTGlicyAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KbGlicmFyeSh0aWR5dmVyc2UpCmxpYnJhcnkoYXJyb3cpCmxpYnJhcnkoZ2x1ZSkKbGlicmFyeShwc3ljaCkKbGlicmFyeShsYXZhYW4pCmxpYnJhcnkoZ2dwbG90MikKbGlicmFyeShwbG90bHkpCmxpYnJhcnkoZ3JpZEV4dHJhKQpsaWJyYXJ5KHNlbVRvb2xzKQpsaWJyYXJ5KHNlbVBsb3QpCgptb2RlbF9uYW1lID0gIkl0ZW1TaW1pbGFyaXR5VHJhaW5pbmctMjAyNDA1MDItdHJpYWwxMiIKI21vZGVsX25hbWUgPSAiaXRlbS1zaW1pbGFyaXR5LTIwMjMxMDE4LTEyMjUwNCIKcHJldHJhaW5lZF9tb2RlbF9uYW1lID0gImFsbC1tcG5ldC1iYXNlLXYyIgoKZGF0YV9wYXRoID0gZ2x1ZSgiLi8iKQpwcmV0cmFpbmVkX2RhdGFfcGF0aCA9IGdsdWUoIi4vIikKCnNldC5zZWVkKDQyKQoKbnVtYmVyX29mX2l0ZW1zIDwtIDE3NQpudW1iZXJfb2Zfc2NhbGVzIDwtIDQwCmNvbWJpbmF0aW9uc19pdGVtcyA8LSBjaG9vc2UobnVtYmVyX29mX2l0ZW1zLCAyKQpjb21iaW5hdGlvbnNfc2NhbGVzIDwtIGNob29zZShudW1iZXJfb2Zfc2NhbGVzLCAyKQpwbGFubmVkX04gPC0gNDAwCmBgYAoKCiMjIFByZWNpc2lvbiBzaW11bGF0aW9uIGZvciBzeW50aGV0aWMgaW50ZXItaXRlbSBjb3JyZWxhdGlvbnMKYGBge3J9CmhvbGRvdXQgPC0gYXJyb3c6OnJlYWRfZmVhdGhlcihmaWxlID0gZmlsZS5wYXRoKGRhdGFfcGF0aCwgZ2x1ZSgiaWdub3JlLnttb2RlbF9uYW1lfS5yYXcub3NmLWJhaW5icmlkZ2UtMjAyMS1zMi0wLml0ZW1fY29ycmVsYXRpb25zLmZlYXRoZXIiKSkpCgpob2xkb3V0X21hcHBpbmdfZGF0YSA9IGFycm93OjpyZWFkX2ZlYXRoZXIoCiAgZmlsZSA9IGZpbGUucGF0aChkYXRhX3BhdGgsIGdsdWUoInttb2RlbF9uYW1lfS5yYXcub3NmLWJhaW5icmlkZ2UtMjAyMS1zMi0wLm1hcHBpbmcyLmZlYXRoZXIiKSkKKSAlPiUKICByZW5hbWUoc2NhbGVfMCA9IHNjYWxlMCwKICAgICAgICAgc2NhbGVfMSA9IHNjYWxlMSkKCnNjYWxlcyA8LSBhcnJvdzo6cmVhZF9mZWF0aGVyKGZpbGUucGF0aChkYXRhX3BhdGgsIGdsdWUoInttb2RlbF9uYW1lfS5yYXcub3NmLWJhaW5icmlkZ2UtMjAyMS1zMi0wLnNjYWxlcy5mZWF0aGVyIikpCikKCmhvbGRvdXRfbGxtIDwtIGhvbGRvdXQgJT4lCiAgbGVmdF9qb2luKGhvbGRvdXRfbWFwcGluZ19kYXRhICU+JSBzZWxlY3QodmFyaWFibGVfMSA9IHZhcmlhYmxlLCBJbnN0cnVtZW50QSA9IGluc3RydW1lbnQsIFNjYWxlQSA9IHNjYWxlXzAsIFN1YnNjYWxlQSA9IHNjYWxlXzEpKSAlPiUKICBsZWZ0X2pvaW4oaG9sZG91dF9tYXBwaW5nX2RhdGEgJT4lIHNlbGVjdCh2YXJpYWJsZV8yID0gdmFyaWFibGUsIEluc3RydW1lbnRBID0gaW5zdHJ1bWVudCwgU2NhbGVBID0gc2NhbGVfMCwgU3Vic2NhbGVBID0gc2NhbGVfMSkpCgpzaW1fcmVzdWx0cyA8LSB0aWJibGUoKQpsaWJyYXJ5KGxhdmFhbikKCmZvcihpIGluIDE6NTAwKSB7CiAgaXRlbXMgPC0gaG9sZG91dCAlPiUgc2VsZWN0KHZhcmlhYmxlXzEpICU+JSBkaXN0aW5jdCgpICU+JSBzYW1wbGVfbigxNzUpICU+JSBwdWxsKHZhcmlhYmxlXzEpCgogIHN1YnNldCA8LSBob2xkb3V0ICU+JSBmaWx0ZXIodmFyaWFibGVfMSAlaW4lIGl0ZW1zLCB2YXJpYWJsZV8yICVpbiUgaXRlbXMpCgogIE4gPC0gcGxhbm5lZF9OCiAgc3Vic2V0IDwtIHN1YnNldCAlPiUgbXV0YXRlKHNlID0gKDEgLSBlbXBpcmljYWxfcl4yKS9zcXJ0KE4gLSAyKSkKICBzZTIgPC0gbWVhbihzdWJzZXQkc2VeMikKCiAgciA8LSBicm9vbTo6dGlkeShjb3IudGVzdChzdWJzZXQkZW1waXJpY2FsX3IsIHN1YnNldCRzeW50aGV0aWNfcikpCgogIG1vZGVsIDwtIHBhc3RlMCgnCiAgICAjIExhdGVudCB2YXJpYWJsZXMKICAgIFBlYXJzb25MYXRlbnQgPX4gMSplbXBpcmljYWxfcgoKICAgICMgRml4aW5nIGVycm9yIHZhcmlhbmNlcyBiYXNlZCBvbiBrbm93biBzdGFuZGFyZCBlcnJvcnMKICAgIGVtcGlyaWNhbF9yIH5+ICcsc2UyLCcqZW1waXJpY2FsX3IKCiAgICAjIFJlbGF0aW9uc2hpcCBiZXR3ZWVuIGxhdGVudCB2YXJpYWJsZXMKICAgIFBlYXJzb25MYXRlbnQgfn4gc3ludGhldGljX3IKICAnKQoKICBmaXQgPC0gc2VtKG1vZGVsLCBkYXRhID0gc3Vic2V0KQoKICBzaW1fcmVzdWx0cyA8LSBiaW5kX3Jvd3Moc2ltX3Jlc3VsdHMsCiAgICBzdGFuZGFyZGl6ZWRzb2x1dGlvbihmaXQpICU+JSBmaWx0ZXIobGhzID09ICJQZWFyc29uTGF0ZW50IiwgcmhzID09ICAic3ludGhldGljX3IiKQogICkKfQoKc2ltX3Jlc3VsdHMgJT4lIHN1bW1hcmlzZShzZW1pX2xhdGVudF9yID0gbWVhbihlc3Quc3RkKSwgbWVhbl9zZSA9IHNxcnQobWVhbihzZV4yKSksIG1heF9zZSA9IG1heChzZSkpCmBgYAoKCiMjIFByZWNpc2lvbiBzaW11bGF0aW9uIGZvciBzeW50aGV0aWMgcmVsaWFiaWxpdGllcwpgYGB7cn0KY29yc19sbG0gPC0gaG9sZG91dF9sbG0gJT4lCiAgc2VsZWN0KHggPSB2YXJpYWJsZV8xLCB5ID0gdmFyaWFibGVfMiwgciA9IHN5bnRoZXRpY19yKSAlPiUKICBhcy5kYXRhLmZyYW1lKCkgfD4KICBpZ3JhcGg6OmdyYXBoX2Zyb21fZGF0YV9mcmFtZShkaXJlY3RlZCA9IEZBTFNFKSB8PgogIGlncmFwaDo6YXNfYWRqYWNlbmN5X21hdHJpeChhdHRyID0gInIiLCBzcGFyc2UgPSBGQUxTRSkKZGlhZyhjb3JzX2xsbSkgPC0gMQoKY29yc19yZWFsIDwtIGhvbGRvdXRfbGxtICU+JQogIHNlbGVjdCh4ID0gdmFyaWFibGVfMSwgeSA9IHZhcmlhYmxlXzIsIHIgPSBlbXBpcmljYWxfcikgJT4lCiAgYXMuZGF0YS5mcmFtZSgpIHw+CiAgaWdyYXBoOjpncmFwaF9mcm9tX2RhdGFfZnJhbWUoZGlyZWN0ZWQgPSBGQUxTRSkgfD4KICBpZ3JhcGg6OmFzX2FkamFjZW5jeV9tYXRyaXgoYXR0ciA9ICJyIiwgc3BhcnNlID0gRkFMU0UpCmRpYWcoY29yc19yZWFsKSA8LSAxCgptYXBwaW5nX2RhdGEgPC0gaG9sZG91dF9tYXBwaW5nX2RhdGEKaXRlbXNfYnlfc2NhbGUgPC0gYmluZF9yb3dzKAogIHNjYWxlcyAlPiUgZmlsdGVyKHNjYWxlXzEgPT0gIiIpICU+JSBsZWZ0X2pvaW4obWFwcGluZ19kYXRhICU+JSBzZWxlY3QoLXNjYWxlXzEpLCBieSA9IGMoImluc3RydW1lbnQiLCAic2NhbGVfMCIpKSwKICBzY2FsZXMgJT4lIGZpbHRlcihzY2FsZV8xICE9ICIiKSAlPiUgbGVmdF9qb2luKG1hcHBpbmdfZGF0YSwgYnkgPSBjKCJpbnN0cnVtZW50IiwgInNjYWxlXzAiLCAic2NhbGVfMSIpKQopCiAgCm5fZGlzdGluY3Qoc2NhbGVzJHNjYWxlKQoKc2NhbGVzIDwtIGl0ZW1zX2J5X3NjYWxlICU+JQogIGdyb3VwX2J5KGtleWVkLCBzY2FsZSkgJT4lCiAgc3VtbWFyaXNlKAogICAgaXRlbXMgPSBsaXN0KHZhcmlhYmxlKSwKICAgIG51bWJlcl9vZl9pdGVtcyA9IG5fZGlzdGluY3QodmFyaWFibGUpLAogICAgbHZuID0gcGFzdGUoZmlyc3Qoc2NhbGUpLCAiID1+ICIsIHBhc3RlKHZhcmlhYmxlLCBjb2xsYXBzZSA9ICIgKyAiKSkpICU+JQogIGRyb3BfbmEoKSAlPiUgCiAgdW5ncm91cCgpCgpyYW5kb21fc2NhbGVzIDwtIGxpc3QoKQpmb3IoaSBpbiAxOjEwMDApIHsKICBuX2l0ZW1zIDwtIHJwb2lzKDEsIG1lYW4oc2NhbGVzJG51bWJlcl9vZl9pdGVtcykpCiAgbl9pdGVtcyA8LSBpZl9lbHNlKG5faXRlbXMgPCAzLCAzLCBuX2l0ZW1zKQogIHJhbmRvbV9zY2FsZXNbW2ldXSA8LSBob2xkb3V0X21hcHBpbmdfZGF0YSAlPiUKICAgIHNhbXBsZV9uKG5faXRlbXMpICU+JQogICAgbXV0YXRlKHNjYWxlID0gcGFzdGUwKCJyYW5kb20iLCBpKSkgJT4lCiAgICBncm91cF9ieShzY2FsZSkgJT4lCiAgICBzdW1tYXJpc2UoCiAgICAgIGl0ZW1zID0gbGlzdCh2YXJpYWJsZSksCiAgICAgIG51bWJlcl9vZl9pdGVtcyA9IG5fZGlzdGluY3QodmFyaWFibGUpLAogICAgICBsdm4gPSBwYXN0ZShmaXJzdChzY2FsZSksICIgPX4gIiwgcGFzdGUodmFyaWFibGUsIGNvbGxhcHNlID0gIiArICIpKSkgJT4lCiAgICBkcm9wX25hKCkgJT4lIAogICAgbXV0YXRlKGtleWVkID0gMSkKfQoKcmFuZG9tX3NjYWxlcyA8LSBiaW5kX3Jvd3MocmFuZG9tX3NjYWxlcykKc2NhbGVzIDwtIGJpbmRfcm93cyhzY2FsZXMsIHJhbmRvbV9zY2FsZXMpCm5fZGlzdGluY3Qoc2NhbGVzJHNjYWxlKQoKc291cmNlKCJnbG9iYWxfZnVuY3Rpb25zLlIiKQoKc2NhbGVzIDwtIHNjYWxlcyAlPiUgZmlsdGVyKG51bWJlcl9vZl9pdGVtcyA+PSAzKQoKc2NhbGVzIDwtIHNjYWxlcyAlPiUKICByb3d3aXNlKCkgJT4lCiAgbXV0YXRlKHJfcmVhbCA9IGxpc3QoY29yc19yZWFsW2l0ZW1zLCBpdGVtc10pLAogICAgICAgICByX2xsbSA9IGxpc3QoY29yc19sbG1baXRlbXMsIGl0ZW1zXSkpICU+JQogIG11dGF0ZShyZXZlcnNlX2l0ZW1zID0gbGlzdChmaW5kX3JldmVyc2VfaXRlbXNfYnlfZmlyc3RfaXRlbShyX3JlYWwsIGtleWVkKSksCiAgICAgICAgIHJfcmVhbF9yZXYgPSBsaXN0KHJldmVyc2VfaXRlbXMocl9yZWFsLCByZXZlcnNlX2l0ZW1zKSksCiAgICAgICAgIHJfbGxtX3JldiA9IGxpc3QocmV2ZXJzZV9pdGVtcyhyX2xsbSwgcmV2ZXJzZV9pdGVtcykpKSAlPiUKICBtdXRhdGUoCiAgICByZWxfcmVhbCA9IGxpc3QocHN5Y2g6OmFscGhhKHJfcmVhbF9yZXYsIGtleXMgPSBGLCBuLm9icyA9IHBsYW5uZWRfTikkZmVsZHQpKSAlPiUKICBtdXRhdGUoCiAgICByZWxfbGxtID0gbGlzdChwc3ljaDo6YWxwaGEocl9sbG1fcmV2LCBrZXlzID0gRiwgbi5vYnMgPSBwbGFubmVkX04pJGZlbGR0KSkgJT4lCiAgbXV0YXRlKHJlbF9yZWFsX2FscGhhID0gcmVsX3JlYWwkYWxwaGEkcmF3X2FscGhhLAogICAgICAgICByZWxfbGxtX2FscGhhID0gcmVsX2xsbSRhbHBoYSRyYXdfYWxwaGEpICU+JQogIG11dGF0ZSgKICAgIGFscGhhX3NlID0gbWVhbihkaWZmKHVubGlzdChwc3ljaG9tZXRyaWM6OmFscGhhLkNJKHJlbF9yZWFsX2FscGhhLCBrID0gbnVtYmVyX29mX2l0ZW1zLCBOID0gcGxhbm5lZF9OLCBsZXZlbCA9IDAuOTUpKSkpCiAgKQoKcXBsb3Qoc2NhbGVzJGFscGhhX3NlKQpxcGxvdChzY2FsZXMkcmVsX3JlYWxfYWxwaGEsIHNjYWxlcyRhbHBoYV9zZSkKcXBsb3Qoc2NhbGVzJG51bWJlcl9vZl9pdGVtcywgc2NhbGVzJGFscGhhX3NlKQpxcGxvdChzY2FsZXMkcmVsX3JlYWxfYWxwaGEsIHNjYWxlcyRhbHBoYV9zZSwgY29sb3IgPSBzY2FsZXMkbnVtYmVyX29mX2l0ZW1zKQoKcmVhbGlzdGljX3NjYWxlcyA8LSBzY2FsZXMgJT4lIHVuZ3JvdXAoKQoKc2ltX3Jlc3VsdHMgPC0gdGliYmxlKCkKZm9yKGkgaW4gMTo1MDApIHsKICBwaWNrZWRfc2NhbGVzIDwtIHJlYWxpc3RpY19zY2FsZXMgJT4lIGZpbHRlcighc3RyX2RldGVjdChzY2FsZSwgInJhbmRvbSIpKSAlPiUgc2FtcGxlX24obnVtYmVyX29mX3NjYWxlcykKICBzdWJzZXQgPC0KICAgIGJpbmRfcm93cyhwaWNrZWRfc2NhbGVzLAogICAgICAgICAgICAgIHJlYWxpc3RpY19zY2FsZXMgJT4lIGZpbHRlcihzdHJfZGV0ZWN0KHNjYWxlLCAicmFuZG9tIikpICU+JSBzYW1wbGVfbigyMDApCiAgKQoKICBzZTIgPC0gbWVhbihzdWJzZXQkYWxwaGFfc2VeMikKCiAgciA8LSBicm9vbTo6dGlkeShjb3IudGVzdChzdWJzZXQkcmVsX3JlYWxfYWxwaGEsIHN1YnNldCRyZWxfbGxtX2FscGhhKSkKICAociRjb25mLmhpZ2ggLSByJGNvbmYubG93KS8yCgogIG1vZGVsIDwtIHBhc3RlMCgnCiAgICAjIExhdGVudCB2YXJpYWJsZXMKICAgIFBlYXJzb25MYXRlbnQgPX4gMSpyZWxfcmVhbF9hbHBoYQoKICAgICMgRml4aW5nIGVycm9yIHZhcmlhbmNlcyBiYXNlZCBvbiBrbm93biBzdGFuZGFyZCBlcnJvcnMKICAgIHJlbF9yZWFsX2FscGhhIH5+ICcsc2UyLCcqcmVsX3JlYWxfYWxwaGEKCiAgICAjIFJlbGF0aW9uc2hpcCBiZXR3ZWVuIGxhdGVudCB2YXJpYWJsZXMKICAgIFBlYXJzb25MYXRlbnQgfn4gcmVsX2xsbV9hbHBoYQogICcpCgogIGZpdCA8LSBzZW0obW9kZWwsIGRhdGEgPSBzdWJzZXQpCgogIHNpbV9yZXN1bHRzIDwtIGJpbmRfcm93cyhzaW1fcmVzdWx0cywKICAgICAgICAgICAgICAgICAgICAgICAgICAgc3RhbmRhcmRpemVkc29sdXRpb24oZml0KSAlPiUgZmlsdGVyKGxocyA9PSAiUGVhcnNvbkxhdGVudCIsIHJocyA9PSAgInJlbF9sbG1fYWxwaGEiKQogICkKfQpzaW1fcmVzdWx0cyAlPiUgc3VtbWFyaXNlKHNlbWlfbGF0ZW50X3IgPSBtZWFuKGVzdC5zdGQpLCBtZWFuX3NlID0gc3FydChtZWFuKHNlXjIpKSwgbWF4X3NlID0gbWF4KHNlKSkKIyAKIyBzY2FsZXMgJT4lIGdyb3VwX2J5KG51bWJlcl9vZl9pdGVtcykgJT4lCiMgICBzdW1tYXJpc2UoY29yKHJlbF9yZWFsX2FscGhhLCByZWxfbGxtX2FscGhhKSwgbigpKQpgYGAKCgojIyBQcmVjaXNpb24gc2ltdWxhdGlvbiBmb3Igc3ludGhldGljIHNjYWxlIGNvcnJlbGF0aW9ucwpgYGB7cn0KbWFuaWZlc3Rfc2NvcmVzID0gYXJyb3c6OnJlYWRfZmVhdGhlcihmaWxlID0gZmlsZS5wYXRoKGRhdGFfcGF0aCwgZ2x1ZSgiaWdub3JlLnttb2RlbF9uYW1lfS5yYXcub3NmLWJhaW5icmlkZ2UtMjAyMS1zMi0wLnNjYWxlX2NvcnJlbGF0aW9ucy5mZWF0aGVyIikpKQoKCnNpbV9yZXN1bHRzIDwtIHRpYmJsZSgpCmxpYnJhcnkobGF2YWFuKQoKZm9yKGkgaW4gMTo1MDApIHsKICBzY2FsZXMgPC0gbWFuaWZlc3Rfc2NvcmVzICU+JSBzZWxlY3Qoc2NhbGVfYSkgJT4lIGRpc3RpbmN0KCkgJT4lIHNhbXBsZV9uKG51bWJlcl9vZl9zY2FsZXMpICU+JSBwdWxsKHNjYWxlX2EpCgogIHN1YnNldCA8LSBtYW5pZmVzdF9zY29yZXMgJT4lIGZpbHRlcihzY2FsZV9hICVpbiUgc2NhbGVzLCBzY2FsZV9iICVpbiUgc2NhbGVzKQoKICBOIDwtIHBsYW5uZWRfTgogIHN1YnNldCA8LSBzdWJzZXQgJT4lIG11dGF0ZShzZSA9ICgxIC0gZW1waXJpY2FsX3JeMikvc3FydChOIC0gMikpCiAgc2UyIDwtIG1lYW4oc3Vic2V0JHNlXjIpCgogIHIgPC0gYnJvb206OnRpZHkoY29yLnRlc3Qoc3Vic2V0JGVtcGlyaWNhbF9yLCBzdWJzZXQkc3ludGhldGljX3IpKQogIChyJGNvbmYuaGlnaCAtIHIkY29uZi5sb3cpLzIKCiAgbW9kZWwgPC0gcGFzdGUwKCcKICAgICMgTGF0ZW50IHZhcmlhYmxlcwogICAgUGVhcnNvbkxhdGVudCA9fiAxKmVtcGlyaWNhbF9yCgogICAgIyBGaXhpbmcgZXJyb3IgdmFyaWFuY2VzIGJhc2VkIG9uIGtub3duIHN0YW5kYXJkIGVycm9ycwogICAgZW1waXJpY2FsX3Igfn4gJyxzZTIsJyplbXBpcmljYWxfcgoKICAgICMgUmVsYXRpb25zaGlwIGJldHdlZW4gbGF0ZW50IHZhcmlhYmxlcwogICAgUGVhcnNvbkxhdGVudCB+fiBzeW50aGV0aWNfcgogICcpCgogIGZpdCA8LSBzZW0obW9kZWwsIGRhdGEgPSBzdWJzZXQpCgogIHNpbV9yZXN1bHRzIDwtIGJpbmRfcm93cyhzaW1fcmVzdWx0cywKICAgICAgICAgICAgICAgICAgICAgICAgICAgc3RhbmRhcmRpemVkc29sdXRpb24oZml0KSAlPiUgZmlsdGVyKGxocyA9PSAiUGVhcnNvbkxhdGVudCIsIHJocyA9PSAgInN5bnRoZXRpY19yIikKICApCn0KCnNpbV9yZXN1bHRzICU+JSBzdW1tYXJpc2Uoc2VtaV9sYXRlbnRfciA9IG1lYW4oZXN0LnN0ZCksIG1lYW5fc2UgPSBzcXJ0KG1lYW4oc2VeMikpLCBtYXhfc2UgPSBtYXgoc2UpKQpgYGAK</div>
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeSourceEmbed("3_rr_precision_simulations.Rmd");
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
