@@ -105,10 +105,31 @@ holdout_machine_data = arrow::read_feather(
 # )
 ```
 
+## Description
+```{r}
+nrow(holdout_human_data) # respondents
+ncol(holdout_human_data) # items
+nrow(holdout_machine_data) # vector dimensions
+ncol(holdout_machine_data) # items
+n_distinct(holdout_mapping_data$instrument) # instruments
+n_distinct(holdout_mapping_data$scale0) # constructs
+n_distinct(holdout_mapping_data$instrument, holdout_mapping_data$scale0) # scales
+n_distinct(str_c(holdout_mapping_data$instrument, holdout_mapping_data$scale0, holdout_mapping_data$scale1)) # subscales
+```
+
+
 ## Join pairwise item correlations
 ```{r}
 join_pairwise_correlation = function(df_human, df_machine) {
-    df_  = df_human %>% 
+    item_pairs = combn(x = names(df_human), m = 2) %>%
+        t() %>% 
+      as.data.frame()
+    colnames(item_pairs) <- c("variable_1", "variable_2")
+
+    df_  = 
+      item_pairs %>% 
+      left_join(
+      df_human %>% 
         cor(use = "p") %>% 
         reshape2::melt() %>% 
         dplyr::left_join(
@@ -129,17 +150,17 @@ join_pairwise_correlation = function(df_human, df_machine) {
             variable_1 = Var1,
             variable_2 = Var2
         ) %>% 
-        dplyr::filter(variable_1 != variable_2)
+        dplyr::filter(variable_1 != variable_2),
+    by = c("variable_1", "variable_2"))
 
+    df_ <- df_ %>% 
+      dplyr::mutate(empirical_r_se = (1 - empirical_r^2)/sqrt(pairwise_n - 2))
     return(df_)
 }
 
-holdout_data = join_pairwise_correlation(holdout_human_data, holdout_machine_data)
+holdout_item_pairs = join_pairwise_correlation(holdout_human_data, holdout_machine_data)
 
-holdout_data <- holdout_data %>% mutate(empirical_r_se = (1 - empirical_r^2)/sqrt(pairwise_n - 2))
-
-
-arrow::write_feather(holdout_data, sink = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))
+arrow::write_feather(holdout_item_pairs, sink = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))
 ```
 
 
