@@ -7,7 +7,7 @@ output: html_document
 Here, we apply the model to data not used for training, a holdout. The holdout sample was collected by Bainbridge et al. 2022.
 
 ```{r warning=F,message=F}
-knitr::opts_chunk$set(echo = TRUE, error = T)
+knitr::opts_chunk$set(echo = TRUE, error = T, message = F, warning = F)
 
 # Libraries and Settings
 
@@ -59,7 +59,7 @@ N <- holdout_human_data %>% summarise_all(~ sum(!is.na(.))) %>% min()
 total_N <- nrow(holdout_human_data)
 ```
 
-The Bainbridge data was collected on N=`r total_N` respondent. The item with the most missing values still had n=`r N`.
+The Bainbridge data was collected on N=`r total_N` respondents. The item with the most missing values still had n=`r N`.
 
 
 ## Synthetic inter-item correlations
@@ -120,8 +120,8 @@ bind_rows(
 
 ```{r}
 (m_lmsynth_r_items <- brm(
-  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r,
-     sigma ~ I(synthetic_r^2)), data = holdout_llm, 
+  bf(empirical_r | mi(empirical_r_se) ~ poly(synthetic_r,degree = 3),
+     sigma ~ poly(synthetic_r,degree = 3)), data = holdout_llm, 
   file = "ignore/m_synth_r_items"))
 pred <- conditional_effects(m_lmsynth_r_items, method = "predict")
 conditional_effects(m_lmsynth_r_items, dpar = "sigma")
@@ -230,8 +230,6 @@ items_by_scale <- bind_rows(
   holdout_scales %>% filter(scale_1 != "") %>% left_join(mapping_data, by = c("instrument", "scale_0", "scale_1"))
 )
   
-n_distinct(scales$scale)
-
 scales <- items_by_scale %>%
   group_by(keyed, scale) %>%
   summarise(
@@ -240,6 +238,7 @@ scales <- items_by_scale %>%
     lvn = paste(first(scale), " =~ ", paste(variable, collapse = " + "))) %>%
   drop_na() %>% 
   ungroup()
+
 
 random_scales <- list()
 for(i in 1:200) {
@@ -259,7 +258,6 @@ for(i in 1:200) {
 
 random_scales <- bind_rows(random_scales)
 scales <- bind_rows(scales, random_scales)
-n_distinct(scales$scale)
 
 source("global_functions.R")
 
@@ -431,18 +429,6 @@ n_distinct(manifest_scores$scale_a)
 manifest_scores <- manifest_scores %>%
  left_join(scales, by = c("scale_a" = "scale")) %>%
  left_join(scales, by = c("scale_b" = "scale"))
-
-manifest_scores %>%
-  mutate(items = number_of_items.x + number_of_items.y) %>%
-  group_by(items) %>%
-  summarise(cor = cor(empirical_r, synthetic_r), n()) %>%
-  ggplot(aes(items, cor)) + 
-  geom_point()
-
-
-manifest_scores %>%
-  filter(number_of_items.x > 4, number_of_items.y > 4) %>%
-  summarise(cor = cor(empirical_r, synthetic_r), n())
 ```
 
 ### Accuracy
@@ -462,9 +448,6 @@ model <- paste0('
   ')
 
 fit <- sem(model, data = manifest_scores)
-
-summary(m_scales <- lm(empirical_r ~ synthetic_r, manifest_scores))
-sqrt(var(m_scales$residuals)-se2) # prediction error sans sampling error
 
 m_synth_r_scales <- brm(
   bf(empirical_r | mi(empirical_r_se) ~ 1) +
@@ -559,6 +542,26 @@ manifest_scores %>%
                 select(scale_a, scale_b, empirical_r, synthetic_r) %>% 
   DT::datatable(rownames = FALSE,
                 filter = "top")
+```
+
+</details>
+
+<details><summary>Robustness checks</summary>
+
+How does number of items across the two scales relate to accuracy?
+
+```{r}
+manifest_scores %>%
+  mutate(items = number_of_items.x + number_of_items.y) %>%
+  group_by(items) %>%
+  summarise(cor = cor(empirical_r, synthetic_r), n()) %>%
+  ggplot(aes(items, cor)) + 
+  geom_point()
+
+
+manifest_scores %>%
+  filter(number_of_items.x >= 10, number_of_items.y >= 10) %>%
+  summarise(cor = cor(empirical_r, synthetic_r), n())
 ```
 
 </details>
