@@ -52,7 +52,7 @@ holdout_human_data = arrow::read_feather(
   file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.human.feather"))
 )
 
-scales <- arrow::read_feather(file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.scales.feather"))
+holdout_scales <- arrow::read_feather(file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.scales.feather"))
 )
 
 N <- holdout_human_data %>% summarise_all(~ sum(!is.na(.))) %>% min()
@@ -117,7 +117,8 @@ bind_rows(
 ```
 
 
-### Prediction error according to predicted value
+<details><summary>Prediction error plot according to synthetic estimate</summary>
+
 ```{r}
 (m_lmsynth_r_items <- brm(
   bf(empirical_r | mi(empirical_r_se) ~ synthetic_r,
@@ -127,6 +128,7 @@ pred <- conditional_effects(m_lmsynth_r_items, method = "predict")
 conditional_effects(m_lmsynth_r_items, dpar = "sigma")
 ```
 
+</details>
 
 ### Scatter plot
 ```{r}
@@ -168,7 +170,7 @@ rio::export(item_pair_table, "ignore/item_pair_table.feather")
          empirical_r = round(empirical_r, 2),
          items = str_replace_all(str_c(item_text_1, "\n", item_text_2),
                                   "_+", " ")) %>% 
-    sample_df(2000) %>%
+    sample_n(2000) %>%
 ggplot(., aes(synthetic_r, empirical_r, 
               # ymin = empirical_r - empirical_r_se, 
               # ymax = empirical_r + empirical_r_se, 
@@ -186,6 +188,7 @@ item_pair_table <- item_pair_table %>%
                                  empirical_r_se),
            synthetic_r = sprintf("%.2f", synthetic_r)) %>% 
   select(item_text_1, item_text_2, empirical_r, synthetic_r)
+rio::export(item_pair_table, "item_pair_table.xlsx")
 ```
 
 <details><summary>Robustness checks</summary>
@@ -203,14 +206,7 @@ holdout_llm %>%
 
 </details>
 
-```{r}
-rio::export(item_pair_table, "item_pair_table.xlsx")
- # %>% 
- #  DT::datatable(rownames = FALSE,
- #                filter = "top")
-```
-
-[Table](item_pair_table.xlsx)
+[Full table of synthetic and empirical item pair correlations](item_pair_table.xlsx)
 
 
 ## Synthetic Reliabilities
@@ -231,8 +227,8 @@ diag(cors_real) <- 1
 
 mapping_data <- holdout_mapping_data
 items_by_scale <- bind_rows(
-  scales %>% filter(scale_1 == "") %>% left_join(mapping_data %>% select(-scale_1), by = c("instrument", "scale_0")),
-  scales %>% filter(scale_1 != "") %>% left_join(mapping_data, by = c("instrument", "scale_0", "scale_1"))
+  holdout_scales %>% filter(scale_1 == "") %>% left_join(mapping_data %>% select(-scale_1), by = c("instrument", "scale_0")),
+  holdout_scales %>% filter(scale_1 != "") %>% left_join(mapping_data, by = c("instrument", "scale_0", "scale_1"))
 )
   
 n_distinct(scales$scale)
@@ -266,33 +262,7 @@ random_scales <- bind_rows(random_scales)
 scales <- bind_rows(scales, random_scales)
 n_distinct(scales$scale)
 
-find_reverse_items_by_first_item <- function(rs, first_item_key) {
-  # negatively correlated with first item
-  items <- rs[-1, 1]
-  if(first_item_key == 1) {
-    reversed <- which(items < 0)
-  } else {
-    reversed <- which(items > 0)
-  }
-  reverse_keyed_items <- names(items)[reversed]
-  reverse_keyed_items
-}
-
-reverse_items <- function(rs, reverse_keyed_items) {
-  # Reverse the correlations for the reverse-keyed items
-  for (item in reverse_keyed_items) {
-    # Get the index of the reverse-keyed item
-    item_index <- which(rownames(rs) == item)
-
-    # Reverse the correlations
-    rs[item_index, ] <- rs[item_index, ] * -1
-    rs[, item_index] <- rs[, item_index] * -1
-
-    # Since the diagonal is the correlation of the item with itself, set it back to 1
-    rs[item_index, item_index] <- 1
-  }
-  rs
-}
+source("global_functions.R")
 
 scales <- scales %>% filter(number_of_items >= 3)
 
@@ -365,16 +335,18 @@ bind_rows(
 ```
 
 
-### Prediction error according to predicted value and no. of items
+<details><summary>Prediction error plot according to synthetic estimate</summary>
+
 ```{r}
 (m_lmsynth_r_scales <- brm(
   bf(empirical_alpha | mi(empirical_alpha_se) ~ synthetic_alpha,
-     sigma ~ synthetic_alpha + number_of_items), data = scales, 
+     sigma ~ synthetic_alpha), data = scales, 
   file = "ignore/m_synth_rel_lm"))
 pred <- conditional_effects(m_lmsynth_r_scales, method = "predict")
 conditional_effects(m_lmsynth_r_scales, dpar = "sigma")
 ```
 
+</details>
 
 ### Scatter plot
 ```{r}
@@ -405,18 +377,16 @@ plot_scales
 ### Interactive plot
 ```{r}
 (scales %>% 
+  filter(!str_detect(scale, "^random")) %>% 
   mutate(synthetic_alpha = round(synthetic_alpha, 2),
          empirical_alpha = round(empirical_alpha, 2),
          scale = str_replace_all(scale, "_+", " ")) %>% 
 ggplot(., aes(synthetic_alpha, empirical_alpha, 
-                   color = str_detect(scale, "^random"), 
               # ymin = empirical_r - empirical_r_se, 
               # ymax = empirical_r + empirical_r_se, 
               label = scale)) + 
   geom_abline(linetype = "dashed") +
-  geom_point(alpha = 0.3, size = 1) +
-  scale_color_manual(values = c("#00A0B0", "#6A4A3C"),
-                     guide = F) +
+  geom_point(alpha = 0.3, size = 1, color = "#00A0B0") +
   xlab("Synthetic Cronbach's alpha") + 
   ylab("Empirical Cronbach's alpha") +
   theme_bw() +
@@ -438,6 +408,16 @@ scales %>%
   select(scale, empirical_alpha, synthetic_alpha, number_of_items) %>% 
   DT::datatable(rownames = FALSE,
                 filter = "top")
+```
+
+</details>
+
+<details><summary>Robustness checks</summary>
+
+```{r}
+scales %>% 
+  group_by(str_detect(scale, "^random")) %>% 
+  summarise(broom::tidy(cor.test(synthetic_alpha, empirical_alpha)), sd_alpha = sd(empirical_alpha), n = n())
 ```
 
 </details>
@@ -510,7 +490,8 @@ bind_rows(
 ```
 
 
-### Prediction error according to predicted value
+<details><summary>Prediction error plot according to synthetic estimate</summary>
+
 ```{r}
 (m_lmsynth_r_scales <- brm(
   bf(empirical_r | mi(empirical_r_se) ~ synthetic_r,
@@ -520,6 +501,8 @@ pred <- conditional_effects(m_lmsynth_r_scales, method = "predict")
 conditional_effects(m_lmsynth_r_scales, dpar = "sigma")
 ```
 
+
+</details>
 
 ### Scatter plot
 ```{r}

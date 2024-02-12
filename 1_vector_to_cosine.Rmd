@@ -29,53 +29,9 @@ data_path = glue("./")
 pretrained_data_path = glue("./")
 
 set.seed(42)
+source("global_functions.R")
 ```
 
-## Global functions
-```{r}
-find_reverse_items_by_first_item <- function(rs, first_item_key) {
-  # negatively correlated with first item
-  items <- rs[-1, 1]
-  if(first_item_key == 1) {
-    reversed <- which(items < 0)
-  } else {
-    reversed <- which(items > 0)
-  }
-  reverse_keyed_items <- names(items)[reversed]
-  reverse_keyed_items
-}
-
-reverse_items = function(.df, reverse_keyed_items) {
-  for (.col in reverse_keyed_items) {
-
-    if (!.col %in% colnames(.df)) {
-      next
-    }
-
-    .df[.col, ] = .df[.col, ] * -1
-    .df[, .col] = .df[, .col] * -1
-
-  }
-  return(.df)
-}
-
-
-summarize_cor_test = function(cor_test_df) {
-    df_ = suppressMessages({
-        cor_test_df %>% 
-            t() %>% 
-            as.data.frame() %>% 
-            tibble::rownames_to_column("dataset") %>% 
-            as_tibble() %>% 
-            dplyr::select(dplyr::any_of(c("dataset", "statistic.t", "parameter.df", "estimate.cor", "conf.int1", "conf.int2"))) %>% 
-            readr::type_convert() %>% 
-            dplyr::mutate(r2 = estimate.cor^2) %>% 
-            dplyr::mutate_if(is.numeric, round, 2)
-    })
-    return(df_)
-}
-
-```
 
 ## Load data
 ```{r}
