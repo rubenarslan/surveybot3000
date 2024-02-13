@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE, error = T, message = F, warning = F)
 # Libraries and Settings
 
 # Libs ---------------------------
+library(knitr)
 library(tidyverse)
 library(arrow)
 library(glue)
