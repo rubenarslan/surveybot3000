@@ -26,6 +26,10 @@ library(semPlot)
 library(broom)
 library(broom.mixed)
 library(brms)
+library(lavaan)
+library(tidybayes)
+library(cowplot)
+
 options(mc.cores = parallel::detectCores(), 
         brms.backend = "cmdstanr", 
         brms.file_refit = "on_change")
@@ -68,10 +72,11 @@ The Bainbridge data was collected on N=`r total_N` respondents. The item with th
 holdout_llm <- holdout %>%
   left_join(holdout_mapping_data %>% select(variable_1 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>%
   left_join(holdout_mapping_data %>% select(variable_2 = variable, InstrumentB = instrument, ScaleB = scale_0, SubscaleB = scale_1))
+```
 
-library(lavaan)
 
-
+### Accuracy
+```{r}
 se2 <- mean(holdout_llm$empirical_r_se^2)
 
 r <- broom::tidy(cor.test(holdout_llm$empirical_r, holdout_llm$synthetic_r))
@@ -89,17 +94,24 @@ model <- paste0('
 
 fit <- sem(model, data = holdout_llm)
 
-library(brms)
 m_synth_r_items <- brm(
-  bf(empirical_r | mi(empirical_r_se) ~ 1) +
-  bf(synthetic_r ~ 1) + 
-    set_rescor(T), data = holdout_llm, 
-  file = "ignore/m_synth_r_items_r")
-```
+  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(variable_1, variable_2)),
+     sigma ~ poly(synthetic_r, degree = 3)), data = holdout_llm, 
+  file = "ignore/m_synth_r_items_lm")
 
+sd_synth <- sd(m_synth_r_items$data$synthetic_r)
 
-### Accuracy
-```{r}
+accuracy_bayes <- m_synth_r_items %>% 
+  tidy_draws() %>% 
+  mutate(
+    sigma = exp(b_sigma_Intercept),
+    total_var = (sd_synth*b_synthetic_r) ^ 2 + sigma^2 + sd_mmvariable_1variable_2__Intercept^2,
+    exp_var = (sd_synth*b_synthetic_r) ^ 2 / total_var,
+    r = sqrt(exp_var)) %>% 
+  mean_hdci(sigma, exp_var, r)
+
+accuracy_bayes_items <- accuracy_bayes
+
 bind_rows(
   r %>% 
     mutate(kind = "manifest") %>% 
@@ -109,9 +121,9 @@ bind_rows(
     mutate(kind = "semi-latent (SEM)") %>% 
     select(kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
-  summary(m_synth_r_items)$rescor_pars %>% 
+  accuracy_bayes %>% 
     mutate(kind = "semi-latent (Bayesian EIV)") %>% 
-    select(kind, accuracy = Estimate, conf.low = `l-95% CI`, conf.high = `u-95% CI`)
+    select(kind, accuracy = r, conf.low = r.lower, conf.high = r.upper)
   ) %>% 
   knitr::kable(digits = 2)
 ```
@@ -120,12 +132,13 @@ bind_rows(
 <details><summary>Prediction error plot according to synthetic estimate</summary>
 
 ```{r}
-(m_lmsynth_r_items <- brm(
-  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r,
-     sigma ~ poly(synthetic_r,degree = 3)), data = holdout_llm, 
-  file = "ignore/m_synth_r_items"))
-pred <- conditional_effects(m_lmsynth_r_items, method = "predict")
-conditional_effects(m_lmsynth_r_items, dpar = "sigma")
+m_synth_r_items
+
+pred <- conditional_effects(m_synth_r_items, method = "predict")
+
+plot(conditional_effects(m_synth_r_items, dpar = "sigma"), plot = F)[[1]] + 
+  theme_bw() + 
+  ylab("Prediction error (sigma)")
 ```
 
 </details>
@@ -136,6 +149,7 @@ ggplot(holdout_llm, aes(synthetic_r, empirical_r,
               ymin = empirical_r - empirical_r_se,
               ymax = empirical_r + empirical_r_se)) + 
   geom_abline(linetype = "dashed") +
+  geom_point(color = "#00A0B0", alpha = 0.1, size = 1) +
   geom_smooth(aes(
     x = synthetic_r,
     y = estimate__,
@@ -145,7 +159,6 @@ ggplot(holdout_llm, aes(synthetic_r, empirical_r,
   color = "#EB6841",
   fill = "#EDC951",
   data = as.data.frame(pred$synthetic_r)) +
-  geom_point(color = "#00A0B0", alpha = 0.1, size = 1) +
   xlab("Synthetic inter-item correlation") + 
   ylab("Empirical inter-item correlation") +
   theme_bw() +
@@ -329,12 +342,24 @@ fit <- sem(model, data = scales)
 
 ### Accuracy
 ```{r}
-m_synth_r_rels <- brm(
-  bf(empirical_alpha | mi(empirical_alpha_se) ~ 1) +
-  bf(synthetic_alpha ~ 1) + 
-    set_rescor(T), 
-  data = scales, 
-  file = "ignore/m_synth_r_rels")
+m_lmsynth_rel_scales <- brm(
+  bf(empirical_alpha | mi(empirical_alpha_se) ~ synthetic_alpha,
+     sigma ~ poly(synthetic_alpha, degree = 3)), data = scales, 
+  file = "ignore/m_synth_rel_lm")
+
+
+sd_synth <- sd(m_lmsynth_rel_scales$data$synthetic_alpha)
+
+accuracy_bayes <- m_lmsynth_rel_scales %>% 
+  tidy_draws() %>% 
+  mutate(
+    sigma = exp(b_sigma_Intercept), # poly terms have zero means and drop
+                                    # out of the equation
+    total_var = (sd_synth*b_synthetic_alpha) ^ 2 + sigma^2,
+    exp_var = (sd_synth*b_synthetic_alpha) ^ 2 / total_var,
+    r = sqrt(exp_var)) %>% 
+  mean_hdci(sigma, exp_var, r)
+accuracy_bayes_rels <- accuracy_bayes
 
 bind_rows(
   r %>% 
@@ -345,9 +370,9 @@ bind_rows(
     mutate(kind = "semi-latent (SEM)") %>% 
     select(kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
-  summary(m_synth_r_rels)$rescor_pars %>% 
+  accuracy_bayes %>% 
     mutate(kind = "semi-latent (Bayesian EIV)") %>% 
-    select(kind, accuracy = Estimate, conf.low = `l-95% CI`, conf.high = `u-95% CI`)
+    select(kind, accuracy = r, conf.low = r.lower, conf.high = r.upper)
   ) %>% 
   knitr::kable(digits = 2)
 ```
@@ -356,12 +381,13 @@ bind_rows(
 <details><summary>Prediction error plot according to synthetic estimate</summary>
 
 ```{r}
-(m_lmsynth_r_scales <- brm(
-  bf(empirical_alpha | mi(empirical_alpha_se) ~ synthetic_alpha,
-     sigma ~ synthetic_alpha), data = scales, 
-  file = "ignore/m_synth_rel_lm"))
-pred <- conditional_effects(m_lmsynth_r_scales, method = "predict")
-conditional_effects(m_lmsynth_r_scales, dpar = "sigma")
+m_lmsynth_rel_scales
+
+pred <- conditional_effects(m_lmsynth_rel_scales, method = "predict")
+plot(conditional_effects(m_lmsynth_rel_scales, dpar = "sigma"), plot = F)[[1]] + 
+  theme_bw() + 
+  xlim(0,1)+
+  ylab("Prediction error (sigma)")
 ```
 
 </details>
@@ -373,6 +399,7 @@ ggplot(scales, aes(synthetic_alpha, empirical_alpha,
               ymin = empirical_alpha - empirical_alpha_se,
               ymax = empirical_alpha + empirical_alpha_se)) + 
   geom_abline(linetype = "dashed") +
+  geom_point(alpha = 0.3, size = 1) +
   geom_smooth(aes(
     x = synthetic_alpha,
     y = estimate__,
@@ -382,14 +409,13 @@ ggplot(scales, aes(synthetic_alpha, empirical_alpha,
   color = "#EB6841",
   fill = "#EDC951",
   data = as.data.frame(pred$synthetic_alpha)) +
-  geom_point(alpha = 0.3, size = 1) +
   scale_color_manual(values = c("#00A0B0", "#6A4A3C"),
                      guide = "none") +
   xlab("Synthetic Cronbach's alpha") + 
   ylab("Empirical Cronbach's alpha") +
   theme_bw() +
-  coord_fixed(xlim = c(0,1), ylim = c(0,1)) -> plot_scales
-plot_scales
+  coord_fixed(xlim = c(0,1), ylim = c(0,1)) -> plot_rels
+plot_rels
 ```
 
 ### Interactive plot
@@ -470,17 +496,22 @@ model <- paste0('
 
 fit <- sem(model, data = manifest_scores)
 
-m_synth_r_scales <- brm(
-  bf(empirical_r | mi(empirical_r_se) ~ 1) +
-  bf(synthetic_r ~ 1) + 
-    set_rescor(T), data = manifest_scores, 
-  file = "ignore/m_synth_r_scales")
+m_lmsynth_r_scales <- brm(
+  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(scale_a, scale_b)),
+     sigma ~ poly(synthetic_r, degree = 3)), data = manifest_scores, 
+  file = "ignore/m_synth_r_scales_lm8")
 
-m_synth_r_scales <- brm(
-  bf(empirical_r | mi(empirical_r_se) ~ (1|scale_a) + (1|scale_b)) +
-  bf(synthetic_r ~ (1|scale_a) + (1|scale_b)) + 
-    set_rescor(T), data = manifest_scores, 
-  file = "ignore/m_synth_r_scales_clust")
+sd_synth <- sd(m_lmsynth_r_scales$data$synthetic_r)
+
+accuracy_bayes <- m_lmsynth_r_scales %>% 
+  tidy_draws() %>% 
+  mutate(
+    sigma = exp(b_sigma_Intercept),
+    total_var = (sd_synth*b_synthetic_r) ^ 2 + sigma^2 + sd_mmscale_ascale_b__Intercept^2,
+    exp_var = (sd_synth*b_synthetic_r) ^ 2 / total_var,
+    r = sqrt(exp_var)) %>% 
+  mean_hdci(sigma, exp_var, r)
+accuracy_bayes_scales <- accuracy_bayes
 
 bind_rows(
   r %>% 
@@ -491,9 +522,9 @@ bind_rows(
     mutate(kind = "semi-latent (SEM)") %>% 
     select(kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
-  summary(m_synth_r_scales)$rescor_pars %>% 
+  accuracy_bayes %>% 
     mutate(kind = "semi-latent (Bayesian EIV)") %>% 
-    select(kind, accuracy = Estimate, conf.low = `l-95% CI`, conf.high = `u-95% CI`)
+    select(kind, accuracy = r, conf.low = r.lower, conf.high = r.upper)
   ) %>% 
   knitr::kable(digits = 2)
 ```
@@ -502,66 +533,12 @@ bind_rows(
 <details><summary>Prediction error plot according to synthetic estimate</summary>
 
 ```{r}
-(m_lmsynth_r_scales <- brm(
-  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(scale_a, scale_b)),
-     sigma ~ poly(synthetic_r, degree = 3)), data = manifest_scores, 
-  file = "ignore/m_synth_r_scales_lm8"))
-
-sd_synth <- sd(m_lmsynth_r_scales$data$synthetic_r)
-sd_pol1 <- sd(m_lmsynth_r_scales$data$`poly(synthetic_r, degree = 3)`[,1])
-sd_pol2 <- sd(m_lmsynth_r_scales$data$`poly(synthetic_r, degree = 3)`[,2])
-sd_pol3 <- sd(m_lmsynth_r_scales$data$`poly(synthetic_r, degree = 3)`[,3])
-library(tidybayes)
-m_lmsynth_r_scales %>% 
-  tidy_draws() %>% 
-  mutate(
-    sigma = exp(b_sigma_Intercept + sd_pol1*b_sigma_polysynthetic_rdegreeEQ31 +
-                  sd_pol2*b_sigma_polysynthetic_rdegreeEQ32 + sd_pol3*b_sigma_polysynthetic_rdegreeEQ33),
-    total_var = (sd_synth*b_synthetic_r) ^ 2 + sigma^2 + sd_mmscale_ascale_b__Intercept^2,
-    exp_var = (sd_synth*b_synthetic_r) ^ 2 / total_var,
-    r = sqrt(exp_var)) %>% 
-  mean_hdci(sigma, exp_var, r)
-
-(m_lmsynth_r_scales <- brm(
-  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(scale_a, scale_b))), data = manifest_scores, 
-  file = "ignore/m_synth_r_scales_lm4"))
-
-(m_lmsynth_r_scales <- brm(
-  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|scale_a) +(1|scale_b)), data = manifest_scores, 
-  file = "ignore/m_synth_r_scales_lm6"))
-
-(m_lmsynth_r_scales <- brm(
-  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|scale_a) +(1|scale_b) + (1|mm(scale_a, scale_b))), data = manifest_scores, 
-  file = "ignore/m_synth_r_scales_lm9"))
-
-
-(m_lmsynth_r_scales <- brm(
-    bf(empirical_r | mi(empirical_r_se) ~ synthetic_r), data = manifest_scores, 
-    file = "ignore/m_synth_r_scales_lm5"))
-
-(m_lmsynth_r_scales <- brm(
-    bf(empirical_r ~ synthetic_r), data = manifest_scores, 
-    file = "ignore/m_synth_r_scales_lm7"))
-
-sd <- sd(manifest_scores$synthetic_r)
-library(tidybayes)
-m_lmsynth_r_scales %>% 
-  tidy_draws() %>% 
-  mutate(total_var = (sd*b_synthetic_r) ^ 2 + sigma^2,
-         exp_var = (sd*b_synthetic_r) ^ 2 / total_var,
-         r = sqrt(exp_var)) %>% 
-  mean_hdci(exp_var, r)
-
-m_lmsynth_r_scales %>% 
-  tidy_draws() %>% 
-  mutate(total_var = (sd*b_synthetic_r) ^ 2 + sigma^2 + sd_mmscale_ascale_b__Intercept^2,
-         exp_var = ((sd*b_synthetic_r) ^ 2) / total_var,
-         r = sqrt(exp_var)) %>% 
-  mean_hdci(exp_var, r)
-
+m_lmsynth_r_scales
 
 pred <- conditional_effects(m_lmsynth_r_scales, method = "predict")
-conditional_effects(m_lmsynth_r_scales, dpar = "sigma")
+plot(conditional_effects(m_lmsynth_r_scales, dpar = "sigma"), plot = F)[[1]] + 
+  theme_bw() + 
+  ylab("Prediction error (sigma)")
 ```
 
 
@@ -573,6 +550,7 @@ ggplot(manifest_scores, aes(synthetic_r, empirical_r,
               ymin = empirical_r - empirical_r_se,
               ymax = empirical_r + empirical_r_se)) + 
   geom_abline(linetype = "dashed") +
+  geom_point(color = "#00A0B0", alpha = 0.3, size = 1) +
   geom_smooth(aes(
     x = synthetic_r,
     y = estimate__,
@@ -582,7 +560,6 @@ ggplot(manifest_scores, aes(synthetic_r, empirical_r,
   color = "#EB6841",
   fill = "#EDC951",
   data = as.data.frame(pred$synthetic_r)) +
-  geom_point(color = "#00A0B0", alpha = 0.3, size = 1) +
   xlab("Synthetic inter-scale correlation") + 
   ylab("Empirical inter-scale correlation") +
   theme_bw() +
@@ -646,3 +623,28 @@ manifest_scores %>%
 ```
 
 </details>
+
+```{r}
+
+    mutate(kind = "semi-latent (Bayesian EIV)") %>% 
+    select(kind, accuracy = r, conf.low = r.lower, conf.high = r.upper)
+
+library(patchwork)
+
+plot_items + ylab("Empirical Estimates (r/α)") + xlab("") + ggtitle(with(accuracy_bayes_items, { sprintf("Item pairs r=%.2f [%.2f;%.2f]", r, r.lower, r.upper) })) +
+  theme(plot.title = element_text(size = 11)) +
+plot_rels + ylab("") + xlab("Synthetic Estimates (Θ)") + ggtitle(with(accuracy_bayes_rels, { sprintf("Reliabilities r=%.2f [%.2f;%.2f]", r, r.lower, r.upper) })) +
+  theme(plot.title = element_text(size = 11)) +
+plot_scales + ylab("") + xlab("") + ggtitle(with(accuracy_bayes_scales, { sprintf("Scale pairs r=%.2f [%.2f;%.2f]", r, r.lower, r.upper) })) +
+  theme(plot.title = element_text(size = 11))
+
+plot_items  + ggtitle(with(accuracy_bayes_items, { sprintf("r=%.2f [%.2f;%.2f]", r, r.lower, r.upper) })) +
+    theme(plot.title = element_text(size = 11)) +
+    plot_rels + ggtitle(with(accuracy_bayes_rels, { sprintf("r=%.2f [%.2f;%.2f]", r, r.lower, r.upper) })) +
+    theme(plot.title = element_text(size = 11)) +
+    plot_scales + ggtitle(with(accuracy_bayes_scales, { sprintf("r=%.2f [%.2f;%.2f]", r, r.lower, r.upper) })) +
+    theme(plot.title = element_text(size = 11))
+
+ggsave("ignore/Figure_pilot.pdf", width = 8.3, height = 5.5, device = grDevices::cairo_pdf)
+```
+
