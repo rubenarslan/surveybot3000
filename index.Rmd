@@ -476,6 +476,12 @@ m_synth_r_scales <- brm(
     set_rescor(T), data = manifest_scores, 
   file = "ignore/m_synth_r_scales")
 
+m_synth_r_scales <- brm(
+  bf(empirical_r | mi(empirical_r_se) ~ (1|scale_a) + (1|scale_b)) +
+  bf(synthetic_r ~ (1|scale_a) + (1|scale_b)) + 
+    set_rescor(T), data = manifest_scores, 
+  file = "ignore/m_synth_r_scales_clust")
+
 bind_rows(
   r %>% 
     mutate(kind = "manifest") %>% 
@@ -497,9 +503,63 @@ bind_rows(
 
 ```{r}
 (m_lmsynth_r_scales <- brm(
-  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r,
-     sigma ~ I(synthetic_r^2)), data = manifest_scores, 
-  file = "ignore/m_synth_r_scales_lm3"))
+  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(scale_a, scale_b)),
+     sigma ~ poly(synthetic_r, degree = 3)), data = manifest_scores, 
+  file = "ignore/m_synth_r_scales_lm8"))
+
+sd_synth <- sd(m_lmsynth_r_scales$data$synthetic_r)
+sd_pol1 <- sd(m_lmsynth_r_scales$data$`poly(synthetic_r, degree = 3)`[,1])
+sd_pol2 <- sd(m_lmsynth_r_scales$data$`poly(synthetic_r, degree = 3)`[,2])
+sd_pol3 <- sd(m_lmsynth_r_scales$data$`poly(synthetic_r, degree = 3)`[,3])
+library(tidybayes)
+m_lmsynth_r_scales %>% 
+  tidy_draws() %>% 
+  mutate(
+    sigma = exp(b_sigma_Intercept + sd_pol1*b_sigma_polysynthetic_rdegreeEQ31 +
+                  sd_pol2*b_sigma_polysynthetic_rdegreeEQ32 + sd_pol3*b_sigma_polysynthetic_rdegreeEQ33),
+    total_var = (sd_synth*b_synthetic_r) ^ 2 + sigma^2 + sd_mmscale_ascale_b__Intercept^2,
+    exp_var = (sd_synth*b_synthetic_r) ^ 2 / total_var,
+    r = sqrt(exp_var)) %>% 
+  mean_hdci(sigma, exp_var, r)
+
+(m_lmsynth_r_scales <- brm(
+  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(scale_a, scale_b))), data = manifest_scores, 
+  file = "ignore/m_synth_r_scales_lm4"))
+
+(m_lmsynth_r_scales <- brm(
+  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|scale_a) +(1|scale_b)), data = manifest_scores, 
+  file = "ignore/m_synth_r_scales_lm6"))
+
+(m_lmsynth_r_scales <- brm(
+  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|scale_a) +(1|scale_b) + (1|mm(scale_a, scale_b))), data = manifest_scores, 
+  file = "ignore/m_synth_r_scales_lm9"))
+
+
+(m_lmsynth_r_scales <- brm(
+    bf(empirical_r | mi(empirical_r_se) ~ synthetic_r), data = manifest_scores, 
+    file = "ignore/m_synth_r_scales_lm5"))
+
+(m_lmsynth_r_scales <- brm(
+    bf(empirical_r ~ synthetic_r), data = manifest_scores, 
+    file = "ignore/m_synth_r_scales_lm7"))
+
+sd <- sd(manifest_scores$synthetic_r)
+library(tidybayes)
+m_lmsynth_r_scales %>% 
+  tidy_draws() %>% 
+  mutate(total_var = (sd*b_synthetic_r) ^ 2 + sigma^2,
+         exp_var = (sd*b_synthetic_r) ^ 2 / total_var,
+         r = sqrt(exp_var)) %>% 
+  mean_hdci(exp_var, r)
+
+m_lmsynth_r_scales %>% 
+  tidy_draws() %>% 
+  mutate(total_var = (sd*b_synthetic_r) ^ 2 + sigma^2 + sd_mmscale_ascale_b__Intercept^2,
+         exp_var = ((sd*b_synthetic_r) ^ 2) / total_var,
+         r = sqrt(exp_var)) %>% 
+  mean_hdci(exp_var, r)
+
+
 pred <- conditional_effects(m_lmsynth_r_scales, method = "predict")
 conditional_effects(m_lmsynth_r_scales, dpar = "sigma")
 ```
