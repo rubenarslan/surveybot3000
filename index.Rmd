@@ -4,7 +4,13 @@ date: "2023-11-07"
 output: html_document
 ---
 
-Here, we apply the model to data not used for training, a holdout. The holdout sample was collected by Bainbridge et al. 2022.
+```{css, echo=FALSE}
+summary h3, summary h4 {
+  display:inline;
+}
+```
+
+Here, we apply the pre-trained model and our fine-tuned model to data not used for training, a holdout. The holdout sample was collected by Bainbridge et al. 2022.
 
 ```{r warning=F,message=F}
 knitr::opts_chunk$set(echo = TRUE, error = T, message = F, warning = F)
@@ -147,7 +153,7 @@ bind_rows(
 ```
 
 
-<details><summary>Prediction error plot according to synthetic estimate</summary>
+<details><summary><h4>Prediction error plot according to synthetic estimate</h4></summary>
 
 ```{r}
 m_synth_r_items
@@ -222,7 +228,7 @@ item_pair_table <- item_pair_table %>%
 rio::export(item_pair_table, "item_pair_table.xlsx")
 ```
 
-<details><summary>Robustness checks</summary>
+<details><summary><h3>Robustness checks</h3></summary>
 
 
 Is the accuracy lower within/across scales and instruments?
@@ -422,25 +428,27 @@ bind_rows(
     mutate(model = "fine-tuned", kind = "semi-latent (SEM)") %>% 
     select(model, kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
-  accuracy_bayes %>% 
+  accuracy_bayes_rels %>% 
     mutate(model = "fine-tuned", kind = "semi-latent (Bayesian EIV)") %>% 
-    select(model, kind, accuracy = r, conf.low = r.lower, conf.high = r.upper)
+    select(model, kind, accuracy = semi_latent_r, conf.low = .lower, conf.high = .upper)
   ) %>% 
   knitr::kable(digits = 2)
 ```
 
 
-<details><summary>Prediction error plot according to synthetic estimate</summary>
+<details><summary><h4>Prediction error plot according to synthetic estimate</h4></summary>
 
 ```{r}
 m_lmsynth_rel_scales
 
 pred <- conditional_effects(m_lmsynth_rel_scales, method = "predict")
-by_draw %>% mean_hdci(sigma)
+by_draw %>% 
+  filter(!is.nan(sigma)) %>% mean_hdci(sigma)
 
 plot(conditional_effects(m_lmsynth_rel_scales, dpar = "sigma"), plot = F)[[1]] + 
   theme_bw() + 
-  xlim(0,1)+
+  scale_x_continuous(limits = c(0,1))+
+  scale_y_continuous(limits = c(0,0.13)) +
   ylab("Prediction error (sigma)")
 ```
 
@@ -493,7 +501,7 @@ ggplot(., aes(synthetic_alpha, empirical_alpha,
   ggplotly()
 ```
 
-<details><summary>Table</summary>
+<details><summary><h4>Table</h4></summary>
 
 ```{r}
 scales %>% 
@@ -510,7 +518,7 @@ scales %>%
 
 </details>
 
-<details><summary>Robustness checks</summary>
+<details><summary><h3>Robustness checks</h3></summary>
 
 ```{r}
 scales %>% 
@@ -632,7 +640,7 @@ bind_rows(
 ```
 
 
-<details><summary>Prediction error plot according to synthetic estimate</summary>
+<details><summary><h4>Prediction error plot according to synthetic estimate</h4></summary>
 
 ```{r}
 m_lmsynth_r_scales
@@ -707,7 +715,7 @@ manifest_scores %>%
 
 </details>
 
-<details><summary>Robustness checks</summary>
+<details><summary><h3>Robustness checks</h3></summary>
 
 How does number of items across the two scales relate to accuracy?
 
@@ -744,17 +752,8 @@ pt_plot_scales
 
 </details>
 
-```{r}
+```{r fig.width = 8.3, fig.height = 5.5}
 library(patchwork)
-
-plot_items + ylab("Empirical Estimates (r/α)") + xlab("") + ggtitle(with(accuracy_bayes_items, { sprintf("Item pairs r=%.2f [%.2f;%.2f]", r, r.lower, r.upper) })) +
-  theme(plot.title = element_text(size = 11)) +
-plot_rels + ylab("") + xlab("Synthetic Estimates (Θ)") + ggtitle(with(accuracy_bayes_rels, { sprintf("Reliabilities r=%.2f [%.2f;%.2f]", r, r.lower, r.upper) })) +
-  theme(plot.title = element_text(size = 11)) +
-plot_scales + ylab("") + xlab("") + ggtitle(with(accuracy_bayes_scales, { sprintf("Scale pairs r=%.2f [%.2f;%.2f]", semi_latent_r, .lower, .upper) })) +
-  theme(plot.title = element_text(size = 11))
-
-
 (pt_plot_items +
     theme(plot.title = element_text(size = 11)) +
     pt_plot_rels +
