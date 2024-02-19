@@ -90,13 +90,22 @@ arrow::write_feather(holdout_mapping_data, sink = file.path(data_path, glue("{mo
 )
 
 
-holdout_human_data = arrow::read_feather(
-  file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.human.feather"))
+# pre-trained model
+pt_holdout_human_data = arrow::read_feather(
+  file = file.path(data_path, glue("ignore.{pretrained_model_name}.raw.osf-bainbridge-2021-s2-0.human.feather"))
+)
+
+pt_holdout_machine_data = arrow::read_feather(
+  file = file.path(data_path, glue("ignore.{pretrained_model_name}.raw.osf-bainbridge-2021-s2-0.machine.feather"))
 )
 
 # fine-tuned model
 holdout_machine_data = arrow::read_feather(
   file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.machine.feather"))
+)
+
+holdout_human_data = arrow::read_feather(
+  file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.human.feather"))
 )
 # 
 # # pre-trained model
@@ -161,6 +170,10 @@ join_pairwise_correlation = function(df_human, df_machine) {
 holdout_item_pairs = join_pairwise_correlation(holdout_human_data, holdout_machine_data)
 
 arrow::write_feather(holdout_item_pairs, sink = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))
+
+pt_holdout_item_pairs = join_pairwise_correlation(pt_holdout_human_data, pt_holdout_machine_data)
+
+arrow::write_feather(pt_holdout_item_pairs, sink = file.path(data_path, glue("ignore.{pretrained_model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))
 ```
 
 
@@ -256,6 +269,10 @@ predict_manifest_scores = function(human_data, machine_data, mapping_data, scale
 manifest_scores = predict_manifest_scores(holdout_human_data, holdout_machine_data, holdout_mapping_data, scales)
 
 arrow::write_feather(manifest_scores, sink = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather")))
+
+pt_manifest_scores = predict_manifest_scores(pt_holdout_human_data, pt_holdout_machine_data, holdout_mapping_data, scales)
+
+arrow::write_feather(pt_manifest_scores, sink = file.path(data_path, glue("ignore.{pretrained_model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather")))
 ```
 
 

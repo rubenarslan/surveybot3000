@@ -47,6 +47,8 @@ set.seed(42)
 
 holdout <- arrow::read_feather(file = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))
 
+pt_holdout <- arrow::read_feather(file = file.path(data_path, glue("ignore.{pretrained_model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))
+
 holdout_mapping_data = arrow::read_feather(
   file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.mapping.feather"))
 ) %>%
@@ -72,6 +74,10 @@ The Bainbridge data was collected on N=`r total_N` respondents. The item with th
 holdout_llm <- holdout %>%
   left_join(holdout_mapping_data %>% select(variable_1 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>%
   left_join(holdout_mapping_data %>% select(variable_2 = variable, InstrumentB = instrument, ScaleB = scale_0, SubscaleB = scale_1))
+
+pt_holdout_llm <- pt_holdout %>%
+  left_join(holdout_mapping_data %>% select(variable_1 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>%
+  left_join(holdout_mapping_data %>% select(variable_2 = variable, InstrumentB = instrument, ScaleB = scale_0, SubscaleB = scale_1))
 ```
 
 
@@ -80,6 +86,7 @@ holdout_llm <- holdout %>%
 se2 <- mean(holdout_llm$empirical_r_se^2)
 
 r <- broom::tidy(cor.test(holdout_llm$empirical_r, holdout_llm$synthetic_r))
+pt_r <- broom::tidy(cor.test(pt_holdout_llm$empirical_r, pt_holdout_llm$synthetic_r))
 
 model <- paste0('
   # Latent variables
@@ -93,6 +100,7 @@ model <- paste0('
 ')
 
 fit <- sem(model, data = holdout_llm)
+pt_fit <- sem(model, data = pt_holdout_llm)
 
 m_synth_r_items <- brm(
   bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(variable_1, variable_2)),
@@ -101,29 +109,39 @@ m_synth_r_items <- brm(
 
 sd_synth <- sd(m_synth_r_items$data$synthetic_r)
 
-accuracy_bayes <- m_synth_r_items %>% 
-  tidy_draws() %>% 
-  mutate(
-    sigma = exp(b_sigma_Intercept),
-    total_var = (sd_synth*b_synthetic_r) ^ 2 + sigma^2 + sd_mmvariable_1variable_2__Intercept^2,
-    exp_var = (sd_synth*b_synthetic_r) ^ 2 / total_var,
-    r = sqrt(exp_var)) %>% 
-  mean_hdci(sigma, exp_var, r)
+newdata <- m_synth_r_items$data %>% select(empirical_r, synthetic_r, empirical_r_se)
+epreds <- epred_draws(newdata = newdata, obj = m_synth_r_items, re_formula = NA, ndraws = 200)
+preds <- predicted_draws(newdata = newdata, obj = m_synth_r_items, re_formula = NA, ndraws = 200)
+epred_preds <- epreds %>% left_join(preds)
+by_draw <- epred_preds %>% group_by(.draw) %>% 
+  summarise(.epred = var(.epred),
+            .prediction = var(.prediction),
+            sigma = sqrt(.prediction - .epred),
+            semi_latent_r = sqrt(.epred/.prediction))
+rm(epred_preds)
 
-accuracy_bayes_items <- accuracy_bayes
+accuracy_bayes_items <- by_draw %>% mean_hdci(semi_latent_r)
 
 bind_rows(
+  pt_r %>% 
+    mutate(model = "pre-trained", kind = "manifest") %>% 
+    select(model, kind, accuracy = estimate, conf.low, conf.high),
+  standardizedsolution(pt_fit) %>% 
+    filter(lhs == "PearsonLatent", rhs ==  "synthetic_r") %>% 
+    mutate(model = "pre-trained", kind = "semi-latent (SEM)") %>% 
+    select(model, kind, accuracy = est.std, 
+           conf.low = ci.lower, conf.high = ci.upper),
   r %>% 
-    mutate(kind = "manifest") %>% 
-    select(kind, accuracy = estimate, conf.low, conf.high),
+    mutate(model = "fine-tuned", kind = "manifest") %>% 
+    select(model, kind, accuracy = estimate, conf.low, conf.high),
   standardizedsolution(fit) %>% 
     filter(lhs == "PearsonLatent", rhs ==  "synthetic_r") %>% 
-    mutate(kind = "semi-latent (SEM)") %>% 
-    select(kind, accuracy = est.std, 
+    mutate(model = "fine-tuned", kind = "semi-latent (SEM)") %>% 
+    select(model, kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
-  accuracy_bayes %>% 
-    mutate(kind = "semi-latent (Bayesian EIV)") %>% 
-    select(kind, accuracy = r, conf.low = r.lower, conf.high = r.upper)
+  accuracy_bayes_items %>% 
+    mutate(model = "fine-tuned", kind = "semi-latent (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = semi_latent_r, conf.low = .lower, conf.high = .upper)
   ) %>% 
   knitr::kable(digits = 2)
 ```
@@ -135,7 +153,7 @@ bind_rows(
 m_synth_r_items
 
 pred <- conditional_effects(m_synth_r_items, method = "predict")
-
+by_draw %>% mean_hdci(sigma)
 plot(conditional_effects(m_synth_r_items, dpar = "sigma"), plot = F)[[1]] + 
   theme_bw() + 
   ylab("Prediction error (sigma)")
@@ -156,7 +174,7 @@ ggplot(holdout_llm, aes(synthetic_r, empirical_r,
     ymin = lower__,
     ymax = upper__,
   ), stat = "identity", 
-  color = "#EB6841",
+  color = "#a48500",
   fill = "#EDC951",
   data = as.data.frame(pred$synthetic_r)) +
   xlab("Synthetic inter-item correlation") + 
@@ -237,6 +255,23 @@ holdout_llm %>%
   kable()
 ```
 
+
+Is the accuracy lower for the pre-trained model?
+
+```{r}
+ggplot(pt_holdout_llm, aes(synthetic_r, empirical_r, 
+              ymin = empirical_r - empirical_r_se,
+              ymax = empirical_r + empirical_r_se)) + 
+  geom_abline(linetype = "dashed") +
+  geom_point(color = "#00A0B0", alpha = 0.1, size = 1) +
+  xlab("Synthetic inter-item correlation") + 
+  ylab("Empirical inter-item correlation") +
+  theme_bw() +
+  coord_fixed(xlim = c(-1,1), ylim = c(-1,1)) -> pt_plot_items
+pt_plot_items
+```
+
+
 </details>
 
 [Full table of synthetic and empirical item pair correlations](item_pair_table.xlsx)
@@ -250,6 +285,13 @@ cors_llm <- holdout_llm %>%
   igraph::graph_from_data_frame(directed = FALSE) |>
   igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
 diag(cors_llm) <- 1
+
+pt_cors_llm <- pt_holdout_llm %>%
+  select(x = variable_1, y = variable_2, r = synthetic_r) %>%
+  as.data.frame() |>
+  igraph::graph_from_data_frame(directed = FALSE) |>
+  igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
+diag(pt_cors_llm) <- 1
 
 cors_real <- holdout_llm %>%
   select(x = variable_1, y = variable_2, r = empirical_r) %>%
@@ -300,16 +342,19 @@ scales <- scales %>% filter(number_of_items >= 3)
 scales <- scales %>%
   rowwise() %>%
   mutate(r_real = list(cors_real[items, items]),
+         pt_r_llm = list(pt_cors_llm[items, items]),
          r_llm = list(cors_llm[items, items])) %>%
   mutate(reverse_items = list(find_reverse_items_by_first_item(r_real, keyed)),
          r_real_rev = list(reverse_items(r_real, reverse_items)),
+         pt_r_llm_rev = list(reverse_items(pt_r_llm, reverse_items)),
          r_llm_rev = list(reverse_items(r_llm, reverse_items))) %>%
   mutate(
-    rel_real = list(psych::alpha(r_real_rev, keys = F, n.obs = N)$feldt)) %>%
-  mutate(
-    rel_llm = list(psych::alpha(r_llm_rev, keys = F, n.obs = N)$feldt)) %>%
+    rel_real = list(psych::alpha(r_real_rev, keys = F, n.obs = N)$feldt),
+    rel_llm = list(psych::alpha(r_llm_rev, keys = F, n.obs = N)$feldt),
+    rel_pt_llm = list(psych::alpha(pt_r_llm_rev, keys = F, n.obs = N)$feldt)) %>%
   mutate(empirical_alpha = rel_real$alpha$raw_alpha,
-         synthetic_alpha = rel_llm$alpha$raw_alpha) %>%
+         synthetic_alpha = rel_llm$alpha$raw_alpha,
+         pt_synthetic_alpha = rel_pt_llm$alpha$raw_alpha) %>%
   mutate(
     empirical_alpha_se = mean(diff(unlist(psychometric::alpha.CI(empirical_alpha, k = number_of_items, N = N, level = 0.95))))
   )
@@ -319,11 +364,14 @@ scales <- scales %>% filter(empirical_alpha > 0)
 # qplot(scales$empirical_alpha, scales$empirical_alpha_se)
 # qplot(scales$number_of_items, scales$empirical_alpha_se)
 # qplot(scales$empirical_alpha, scales$empirical_alpha_se, color = scales$number_of_items)
+```
 
 
+### Accuracy
+```{r}
 se2 <- mean(scales$empirical_alpha_se^2)
-
 r <- broom::tidy(cor.test(scales$empirical_alpha, scales$synthetic_alpha))
+pt_r <- broom::tidy(cor.test(scales$empirical_alpha, scales$pt_synthetic_alpha))
 
 model <- paste0('
   # Latent variables
@@ -337,42 +385,46 @@ model <- paste0('
 ')
 
 fit <- sem(model, data = scales)
-```
+pt_fit <- sem(model, data = scales %>% 
+                select(empirical_alpha, synthetic_alpha = pt_synthetic_alpha))
 
-
-### Accuracy
-```{r}
 m_lmsynth_rel_scales <- brm(
   bf(empirical_alpha | mi(empirical_alpha_se) ~ synthetic_alpha,
      sigma ~ poly(synthetic_alpha, degree = 3)), data = scales, 
   file = "ignore/m_synth_rel_lm")
 
+newdata <- m_lmsynth_rel_scales$data %>% select(empirical_alpha, synthetic_alpha, empirical_alpha_se)
+epreds <- epred_draws(newdata = newdata, obj = m_lmsynth_rel_scales, re_formula = NA)
+preds <- predicted_draws(newdata = newdata, obj = m_lmsynth_rel_scales, re_formula = NA)
+epred_preds <- epreds %>% left_join(preds)
+by_draw <- epred_preds %>% group_by(.draw) %>% 
+  summarise(.epred = var(.epred),
+            .prediction = var(.prediction),
+            sigma = sqrt(.prediction - .epred),
+            semi_latent_r = sqrt(.epred/.prediction))
 
-sd_synth <- sd(m_lmsynth_rel_scales$data$synthetic_alpha)
-
-accuracy_bayes <- m_lmsynth_rel_scales %>% 
-  tidy_draws() %>% 
-  mutate(
-    sigma = exp(b_sigma_Intercept), # poly terms have zero means and drop
-                                    # out of the equation
-    total_var = (sd_synth*b_synthetic_alpha) ^ 2 + sigma^2,
-    exp_var = (sd_synth*b_synthetic_alpha) ^ 2 / total_var,
-    r = sqrt(exp_var)) %>% 
-  mean_hdci(sigma, exp_var, r)
-accuracy_bayes_rels <- accuracy_bayes
+accuracy_bayes_rels <- by_draw %>% mean_hdci(semi_latent_r)
 
 bind_rows(
+  pt_r %>% 
+    mutate(model = "pre-trained", kind = "manifest") %>% 
+    select(model, kind, accuracy = estimate, conf.low, conf.high),
+  standardizedsolution(pt_fit) %>% 
+    filter(lhs == "latent_real_rel", rhs ==  "synthetic_alpha") %>% 
+    mutate(model = "pre-trained", kind = "semi-latent (SEM)") %>% 
+    select(model, kind, accuracy = est.std, 
+           conf.low = ci.lower, conf.high = ci.upper),
   r %>% 
-    mutate(kind = "manifest") %>% 
-    select(kind, accuracy = estimate, conf.low, conf.high),
+    mutate(model = "fine-tuned", kind = "manifest") %>% 
+    select(model, kind, accuracy = estimate, conf.low, conf.high),
   standardizedsolution(fit) %>% 
     filter(lhs == "latent_real_rel", rhs ==  "synthetic_alpha") %>% 
-    mutate(kind = "semi-latent (SEM)") %>% 
-    select(kind, accuracy = est.std, 
+    mutate(model = "fine-tuned", kind = "semi-latent (SEM)") %>% 
+    select(model, kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
   accuracy_bayes %>% 
-    mutate(kind = "semi-latent (Bayesian EIV)") %>% 
-    select(kind, accuracy = r, conf.low = r.lower, conf.high = r.upper)
+    mutate(model = "fine-tuned", kind = "semi-latent (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = r, conf.low = r.lower, conf.high = r.upper)
   ) %>% 
   knitr::kable(digits = 2)
 ```
@@ -384,6 +436,8 @@ bind_rows(
 m_lmsynth_rel_scales
 
 pred <- conditional_effects(m_lmsynth_rel_scales, method = "predict")
+by_draw %>% mean_hdci(sigma)
+
 plot(conditional_effects(m_lmsynth_rel_scales, dpar = "sigma"), plot = F)[[1]] + 
   theme_bw() + 
   xlim(0,1)+
@@ -406,7 +460,7 @@ ggplot(scales, aes(synthetic_alpha, empirical_alpha,
     ymin = lower__,
     ymax = upper__,
   ), stat = "identity", 
-  color = "#EB6841",
+  color = "#a48500",
   fill = "#EDC951",
   data = as.data.frame(pred$synthetic_alpha)) +
   scale_color_manual(values = c("#00A0B0", "#6A4A3C"),
@@ -464,12 +518,46 @@ scales %>%
   summarise(broom::tidy(cor.test(synthetic_alpha, empirical_alpha)), sd_alpha = sd(empirical_alpha), n = n())
 ```
 
+
+Although the number of items alone can of course predict Cronbach's alpha, the synthetic alphas explain much more variance in empirical alphas.
+
+```{r}
+scales %>% 
+  ungroup() %>% 
+  summarise(broom::tidy(cor.test(number_of_items, empirical_alpha)), sd_alpha = sd(empirical_alpha), n = n())
+
+summary(lm(empirical_alpha ~ number_of_items, scales))
+summary(lm(empirical_alpha ~ number_of_items + synthetic_alpha, scales))
+```
+
+
+
+Is the accuracy lower for the pre-trained model?
+
+```{r}
+ggplot(scales, aes(pt_synthetic_alpha, empirical_alpha, 
+                   color = str_detect(scale, "^random"), 
+              ymin = empirical_alpha - empirical_alpha_se,
+              ymax = empirical_alpha + empirical_alpha_se)) + 
+  geom_abline(linetype = "dashed") +
+  geom_point(alpha = 0.3, size = 1) +
+  scale_color_manual(values = c("#00A0B0", "#6A4A3C"),
+                     guide = "none") +
+  xlab("Synthetic Cronbach's alpha") + 
+  ylab("Empirical Cronbach's alpha") +
+  theme_bw() +
+  coord_fixed(xlim = c(0,1), ylim = c(0,1)) -> pt_plot_rels
+pt_plot_rels
+```
+
+
 </details>
 
 
 ## Synthetic Scale Correlations
 ```{r}
 manifest_scores = arrow::read_feather(file = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather")))
+pt_manifest_scores = arrow::read_feather(file = file.path(data_path, glue("ignore.{pretrained_model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather")))
 
 n_distinct(manifest_scores$scale_a)
 
@@ -481,6 +569,7 @@ manifest_scores <- manifest_scores %>%
 ### Accuracy
 ```{r}
 r <- broom::tidy(cor.test(manifest_scores$empirical_r, manifest_scores$synthetic_r))
+pt_r <- broom::tidy(cor.test(pt_manifest_scores$empirical_r, pt_manifest_scores$synthetic_r))
 
 se2 <- mean(manifest_scores$empirical_r_se^2)
 model <- paste0('
@@ -495,6 +584,8 @@ model <- paste0('
   ')
 
 fit <- sem(model, data = manifest_scores)
+pt_fit <- sem(model, data = pt_manifest_scores)
+
 
 m_lmsynth_r_scales <- brm(
   bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(scale_a, scale_b)),
@@ -503,28 +594,39 @@ m_lmsynth_r_scales <- brm(
 
 sd_synth <- sd(m_lmsynth_r_scales$data$synthetic_r)
 
-accuracy_bayes <- m_lmsynth_r_scales %>% 
-  tidy_draws() %>% 
-  mutate(
-    sigma = exp(b_sigma_Intercept),
-    total_var = (sd_synth*b_synthetic_r) ^ 2 + sigma^2 + sd_mmscale_ascale_b__Intercept^2,
-    exp_var = (sd_synth*b_synthetic_r) ^ 2 / total_var,
-    r = sqrt(exp_var)) %>% 
-  mean_hdci(sigma, exp_var, r)
-accuracy_bayes_scales <- accuracy_bayes
+
+newdata <- m_lmsynth_r_scales$data %>% select(empirical_r, synthetic_r, empirical_r_se)
+epreds <- epred_draws(newdata = newdata, obj = m_lmsynth_r_scales, re_formula = NA)
+preds <- predicted_draws(newdata = newdata, obj = m_lmsynth_r_scales, re_formula = NA)
+epred_preds <- epreds %>% left_join(preds)
+by_draw <- epred_preds %>% group_by(.draw) %>% 
+  summarise(.epred = var(.epred),
+            .prediction = var(.prediction),
+            sigma = sqrt(.prediction - .epred),
+            semi_latent_r = sqrt(.epred/.prediction))
+
+accuracy_bayes_scales <- by_draw %>% mean_hdci(semi_latent_r)
 
 bind_rows(
+  pt_r %>% 
+    mutate(model = "pre-trained", kind = "manifest") %>% 
+    select(model, kind, accuracy = estimate, conf.low, conf.high),
+  standardizedsolution(pt_fit) %>% 
+    filter(lhs == "PearsonLatent", rhs ==  "synthetic_r") %>% 
+    mutate(model = "pre-trained", kind = "semi-latent (SEM)") %>% 
+    select(model, kind, accuracy = est.std, 
+           conf.low = ci.lower, conf.high = ci.upper),
   r %>% 
-    mutate(kind = "manifest") %>% 
-    select(kind, accuracy = estimate, conf.low, conf.high),
+    mutate(model = "fine-tuned", kind = "manifest") %>% 
+    select(model, kind, accuracy = estimate, conf.low, conf.high),
   standardizedsolution(fit) %>% 
     filter(lhs == "PearsonLatent", rhs ==  "synthetic_r") %>% 
-    mutate(kind = "semi-latent (SEM)") %>% 
-    select(kind, accuracy = est.std, 
+    mutate(model = "fine-tuned", kind = "semi-latent (SEM)") %>% 
+    select(model, kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
-  accuracy_bayes %>% 
-    mutate(kind = "semi-latent (Bayesian EIV)") %>% 
-    select(kind, accuracy = r, conf.low = r.lower, conf.high = r.upper)
+  accuracy_bayes_scales %>% 
+    mutate(model = "fine-tuned", kind = "semi-latent (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = semi_latent_r, conf.low = .lower, conf.high = .upper)
   ) %>% 
   knitr::kable(digits = 2)
 ```
@@ -534,6 +636,7 @@ bind_rows(
 
 ```{r}
 m_lmsynth_r_scales
+by_draw %>% mean_hdci(sigma)
 
 pred <- conditional_effects(m_lmsynth_r_scales, method = "predict")
 plot(conditional_effects(m_lmsynth_r_scales, dpar = "sigma"), plot = F)[[1]] + 
@@ -557,7 +660,7 @@ ggplot(manifest_scores, aes(synthetic_r, empirical_r,
     ymin = lower__,
     ymax = upper__,
   ), stat = "identity", 
-  color = "#EB6841",
+  color = "#a48500",
   fill = "#EDC951",
   data = as.data.frame(pred$synthetic_r)) +
   xlab("Synthetic inter-scale correlation") + 
@@ -622,28 +725,50 @@ manifest_scores %>%
   summarise(cor = cor(empirical_r, synthetic_r), n())
 ```
 
+
+Is the accuracy lower for the pre-trained model?
+
+```{r}
+ggplot(pt_manifest_scores, aes(synthetic_r, empirical_r, 
+              ymin = empirical_r - empirical_r_se,
+              ymax = empirical_r + empirical_r_se)) + 
+  geom_abline(linetype = "dashed") +
+  geom_point(color = "#00A0B0", alpha = 0.3, size = 1) +
+  xlab("Synthetic inter-scale correlation") + 
+  ylab("Empirical inter-scale correlation") +
+  theme_bw() +
+  coord_fixed(xlim = c(-1,1), ylim = c(-1,1)) -> pt_plot_scales
+pt_plot_scales
+```
+
+
 </details>
 
 ```{r}
-
-    mutate(kind = "semi-latent (Bayesian EIV)") %>% 
-    select(kind, accuracy = r, conf.low = r.lower, conf.high = r.upper)
-
 library(patchwork)
 
 plot_items + ylab("Empirical Estimates (r/α)") + xlab("") + ggtitle(with(accuracy_bayes_items, { sprintf("Item pairs r=%.2f [%.2f;%.2f]", r, r.lower, r.upper) })) +
   theme(plot.title = element_text(size = 11)) +
 plot_rels + ylab("") + xlab("Synthetic Estimates (Θ)") + ggtitle(with(accuracy_bayes_rels, { sprintf("Reliabilities r=%.2f [%.2f;%.2f]", r, r.lower, r.upper) })) +
   theme(plot.title = element_text(size = 11)) +
-plot_scales + ylab("") + xlab("") + ggtitle(with(accuracy_bayes_scales, { sprintf("Scale pairs r=%.2f [%.2f;%.2f]", r, r.lower, r.upper) })) +
+plot_scales + ylab("") + xlab("") + ggtitle(with(accuracy_bayes_scales, { sprintf("Scale pairs r=%.2f [%.2f;%.2f]", semi_latent_r, .lower, .upper) })) +
   theme(plot.title = element_text(size = 11))
 
-plot_items  + ggtitle(with(accuracy_bayes_items, { sprintf("r=%.2f [%.2f;%.2f]", r, r.lower, r.upper) })) +
+
+(pt_plot_items +
     theme(plot.title = element_text(size = 11)) +
-    plot_rels + ggtitle(with(accuracy_bayes_rels, { sprintf("r=%.2f [%.2f;%.2f]", r, r.lower, r.upper) })) +
+    pt_plot_rels +
     theme(plot.title = element_text(size = 11)) +
-    plot_scales + ggtitle(with(accuracy_bayes_scales, { sprintf("r=%.2f [%.2f;%.2f]", r, r.lower, r.upper) })) +
-    theme(plot.title = element_text(size = 11))
+    pt_plot_scales +
+    theme(plot.title = element_text(size = 11))) /
+
+
+(plot_items  + ggtitle(with(accuracy_bayes_items, { sprintf("accuracy = %.2f [%.2f;%.2f]", semi_latent_r, .lower, .upper) })) +
+    theme(plot.title = element_text(size = 11)) +
+    plot_rels + ggtitle(with(accuracy_bayes_rels, { sprintf("accuracy = %.2f [%.2f;%.2f]", semi_latent_r, .lower, .upper) })) +
+    theme(plot.title = element_text(size = 11)) +
+    plot_scales + ggtitle(with(accuracy_bayes_scales, { sprintf("accuracy = %.2f [%.2f;%.2f]", semi_latent_r, .lower, .upper) })) +
+    theme(plot.title = element_text(size = 11)))
 
 ggsave("ignore/Figure_pilot.pdf", width = 8.3, height = 5.5, device = grDevices::cairo_pdf)
 ```
