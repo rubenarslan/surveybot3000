@@ -27,13 +27,11 @@ library(lavaan)
 library(ggplot2)
 library(plotly)
 library(gridExtra)
-library(semTools)
-library(semPlot)
 library(broom)
 library(broom.mixed)
 library(brms)
-library(lavaan)
 library(tidybayes)
+library(cmdstanr)
 library(cowplot)
 
 options(mc.cores = parallel::detectCores(), 
@@ -56,7 +54,7 @@ holdout <- arrow::read_feather(file = file.path(data_path, glue("ignore.{model_n
 pt_holdout <- arrow::read_feather(file = file.path(data_path, glue("ignore.{pretrained_model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))
 
 holdout_mapping_data = arrow::read_feather(
-  file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.mapping.feather"))
+  file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.mapping2.feather"))
 ) %>%
   rename(scale_0 = scale0,
          scale_1 = scale1)
@@ -461,7 +459,7 @@ ggplot(scales, aes(synthetic_alpha, empirical_alpha,
               ymin = empirical_alpha - empirical_alpha_se,
               ymax = empirical_alpha + empirical_alpha_se)) + 
   geom_abline(linetype = "dashed") +
-  geom_point(alpha = 0.3, size = 1) +
+  geom_point(alpha = 0.7, size = 1) +
   geom_smooth(aes(
     x = synthetic_alpha,
     y = estimate__,
@@ -497,7 +495,7 @@ ggplot(., aes(synthetic_alpha, empirical_alpha,
   ylab("Empirical Cronbach's alpha") +
   theme_bw() +
   theme(legend.position='none') + 
-  coord_fixed(xlim = c(0,1), ylim = c(0,1))) %>% 
+  coord_fixed(xlim = c(NA,1), ylim = c(NA,1))) %>% 
   ggplotly()
 ```
 
@@ -754,6 +752,15 @@ pt_plot_scales
 
 ```{r fig.width = 8.3, fig.height = 5.5}
 library(patchwork)
+plot_rels2 <- plot_rels + 
+  annotate("text", size = 3, x = 0.05, y = 0.99, vjust = 0, hjust = 0.09, label = with(accuracy_bayes_rels, { sprintf("accuracy = %.2f [%.2f;%.2f]", semi_latent_r, .lower, .upper) })) +
+  annotate("text", size = 2.5, x = 0.5, y = 0.1, hjust = 0, label = "randomly formed scales", color = "#6A4A3C") +
+  annotate("segment", x = 0.495, y = 0.1, xend = 0.396140, yend = 0.4864297, color = "#6A4A3C", alpha = 0.7) +
+  annotate("segment", x = 0.495, y = 0.1, xend = 0.36230736, yend = 0.187590611, color = "#6A4A3C", alpha = 0.7) +
+  annotate("text", size = 2.5, x = 0.63, y = 0.4, hjust = 0, label = "IPIP Extraversion", color = "#00A0B0") +
+  annotate("segment", x = 0.75, y = 0.42, xend = 0.87, yend = 0.90, color = "#00A0B0", alpha = 0.7)
+
+
 (pt_plot_items +
     theme(plot.title = element_text(size = 11)) +
     pt_plot_rels +
@@ -764,11 +771,13 @@ library(patchwork)
 
 (plot_items  + ggtitle(with(accuracy_bayes_items, { sprintf("accuracy = %.2f [%.2f;%.2f]", semi_latent_r, .lower, .upper) })) +
     theme(plot.title = element_text(size = 11)) +
-    plot_rels + ggtitle(with(accuracy_bayes_rels, { sprintf("accuracy = %.2f [%.2f;%.2f]", semi_latent_r, .lower, .upper) })) +
-    theme(plot.title = element_text(size = 11)) +
+    plot_rels2 +
     plot_scales + ggtitle(with(accuracy_bayes_scales, { sprintf("accuracy = %.2f [%.2f;%.2f]", semi_latent_r, .lower, .upper) })) +
     theme(plot.title = element_text(size = 11)))
-
 ggsave("ignore/Figure_pilot.pdf", width = 8.3, height = 5.5, device = grDevices::cairo_pdf)
+
+
+
+# ggsave("ignore/Figure_pilot.svg", width = 8.3, height = 5.5, device = svglite::svglite)
 ```
 
