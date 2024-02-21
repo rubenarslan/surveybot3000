@@ -1,7 +1,10 @@
 ---
 title: "Language models accurately infer correlations between psychological items and scales from text alone"
 date: "2023-11-07"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
 ---
 
 ```{css, echo=FALSE}
@@ -198,6 +201,9 @@ item_pair_table <- holdout_llm %>%
    left_join(holdout_mapping_data %>% select(variable_2 = variable,
                                              item_text_2 = item_text))
 
+item_pair_table %>% filter(str_length(item_text_1) < 30, str_length(item_text_2) < 30) %>% 
+  left_join(pt_holdout_llm %>% rename(synthetic_r_pt = synthetic_r)) %>% 
+  select(item_text_1, item_text_2, empirical_r, synthetic_r, synthetic_r_pt) %>% View()
 rio::export(item_pair_table, "ignore/item_pair_table.feather")
 
 (item_pair_table %>% 
@@ -754,6 +760,10 @@ pt_plot_scales
 
 ```{r fig.width = 8.3, fig.height = 6}
 library(patchwork)
+pt_plot_items2 <- pt_plot_items +
+    annotate("text", size = 2.5, x = 0.2, y = -0.8, hjust = 1, label = "r(I fear for the worst,\nI never worry about anything)", color = "#00A0B0") +
+  annotate("segment", x = 0.2, y = -0.8, xend = -0.3459711, yend = 0.2761906, color = "#00A0B0", alpha = 0.7) +
+  annotate("text", size = 2.5, x = -.3, y = 0.5, hjust = 1, label = "r(I work hard,\nI am diligent)", color = "#00A0B0")
 
 plot_items2 <- plot_items +
   annotate("text", size = 3, x = -1, y = 0.98, vjust = 0, hjust = 0, label = with(accuracy_bayes_items, { sprintf("accuracy = %.2f [%.2f;%.2f]", semi_latent_r, .lower, .upper) })) +

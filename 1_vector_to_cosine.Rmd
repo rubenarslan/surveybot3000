@@ -161,7 +161,7 @@ join_pairwise_correlation = function(df_human, df_machine) {
     by = c("variable_1", "variable_2"))
 
     df_ <- df_ %>% 
-      dplyr::mutate(empirical_r_se = (1 - empirical_r^2)/sqrt(pairwise_n - 2))
+      dplyr::mutate(empirical_r_se = (1 - empirical_r^2)/sqrt(pairwise_n - 3))
     return(df_)
 }
 
@@ -255,7 +255,8 @@ predict_manifest_scores = function(human_data, machine_data, mapping_data, scale
           scale_a = scale_a,
           scale_b = scale_b,
           empirical_r = human_cor$estimate,
-          empirical_r_se = (human_cor$conf.high - human_cor$conf.low)/1.96,
+          pairwise_n = human_cor$parameter + 2,
+          empirical_r_se = (1 - empirical_r^2)/sqrt(pairwise_n - 3),
           synthetic_r = cor(machine_a, machine_b, use = "p")
         )
       )

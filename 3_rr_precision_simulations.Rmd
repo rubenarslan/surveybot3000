@@ -2,7 +2,10 @@
 title: "Precision simulations"
 author: "Ruben Arslan"
 date: "2023-11-07"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
 ---
 
 
@@ -76,7 +79,7 @@ for(i in 1:500) {
   subset <- holdout %>% filter(variable_1 %in% items, variable_2 %in% items)
 
   N <- planned_N
-  subset <- subset %>% mutate(se = (1 - empirical_r^2)/sqrt(N - 2))
+  subset <- subset %>% mutate(se = (1 - empirical_r^2)/sqrt(N - 3))
   se2 <- mean(subset$se^2)
 
   r <- broom::tidy(cor.test(subset$empirical_r, subset$synthetic_r))
@@ -235,7 +238,7 @@ for(i in 1:500) {
   subset <- manifest_scores %>% filter(scale_a %in% scales, scale_b %in% scales)
 
   N <- planned_N
-  subset <- subset %>% mutate(se = (1 - empirical_r^2)/sqrt(N - 2))
+  subset <- subset %>% mutate(se = (1 - empirical_r^2)/sqrt(N - 3))
   se2 <- mean(subset$se^2)
 
   r <- broom::tidy(cor.test(subset$empirical_r, subset$synthetic_r))
