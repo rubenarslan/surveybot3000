@@ -18,8 +18,6 @@ library(lavaan)
 library(ggplot2)
 library(plotly)
 library(gridExtra)
-library(semTools)
-library(semPlot)
 
 model_name = "ItemSimilarityTraining-20240502-trial12"
 #model_name = "item-similarity-20231018-122504"
