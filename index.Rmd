@@ -8,8 +8,13 @@ output:
 ---
 
 ```{css, echo=FALSE}
+summary {
+  display: block;
+  margin-bottom: 2em;
+}
+
 summary h3, summary h4 {
-  display:inline;
+  display: list-item;
 }
 ```
 
@@ -168,6 +173,8 @@ plot(conditional_effects(m_synth_r_items, dpar = "sigma"), plot = F)[[1]] +
 
 </details>
 
+
+
 ### Scatter plot
 ```{r}
 ggplot(holdout_llm, aes(synthetic_r, empirical_r, 
@@ -201,9 +208,9 @@ item_pair_table <- holdout_llm %>%
    left_join(holdout_mapping_data %>% select(variable_2 = variable,
                                              item_text_2 = item_text))
 
-item_pair_table %>% filter(str_length(item_text_1) < 30, str_length(item_text_2) < 30) %>% 
-  left_join(pt_holdout_llm %>% rename(synthetic_r_pt = synthetic_r)) %>% 
-  select(item_text_1, item_text_2, empirical_r, synthetic_r, synthetic_r_pt) %>% View()
+# item_pair_table %>% filter(str_length(item_text_1) < 30, str_length(item_text_2) < 30) %>% 
+#   left_join(pt_holdout_llm %>% rename(synthetic_r_pt = synthetic_r)) %>% 
+#   select(item_text_1, item_text_2, empirical_r, synthetic_r, synthetic_r_pt) %>% View()
 rio::export(item_pair_table, "ignore/item_pair_table.feather")
 
 (item_pair_table %>% 
@@ -283,6 +290,8 @@ pt_plot_items
 
 
 </details>
+
+
 
 [Full table of synthetic and empirical item pair correlations](item_pair_table.xlsx)
 
@@ -458,6 +467,9 @@ plot(conditional_effects(m_lmsynth_rel_scales, dpar = "sigma"), plot = F)[[1]] +
 
 </details>
 
+
+
+
 ### Scatter plot
 ```{r}
 ggplot(scales, aes(synthetic_alpha, empirical_alpha, 
@@ -522,6 +534,8 @@ scales %>%
 
 </details>
 
+
+
 <details><summary><h3>Robustness checks</h3></summary>
 
 ```{r}
@@ -564,6 +578,8 @@ pt_plot_rels
 
 
 </details>
+
+
 
 
 ## Synthetic Scale Correlations
@@ -659,6 +675,8 @@ plot(conditional_effects(m_lmsynth_r_scales, dpar = "sigma"), plot = F)[[1]] +
 
 </details>
 
+
+
 ### Scatter plot
 ```{r}
 ggplot(manifest_scores, aes(synthetic_r, empirical_r, 
@@ -719,6 +737,9 @@ manifest_scores %>%
 
 </details>
 
+
+
+
 <details><summary><h3>Robustness checks</h3></summary>
 
 How does number of items across the two scales relate to accuracy?
@@ -755,6 +776,9 @@ pt_plot_scales
 
 
 </details>
+
+
+
 
 ## Combined plot
 
