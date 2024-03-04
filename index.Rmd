@@ -541,7 +541,8 @@ scales %>%
 ```{r}
 scales %>% 
   group_by(str_detect(scale, "^random")) %>% 
-  summarise(broom::tidy(cor.test(synthetic_alpha, empirical_alpha)), sd_alpha = sd(empirical_alpha), n = n())
+  summarise(broom::tidy(cor.test(synthetic_alpha, empirical_alpha)), sd_alpha = sd(empirical_alpha), n = n()) %>% 
+  knitr::kable()
 ```
 
 
@@ -550,7 +551,9 @@ Although the number of items alone can of course predict Cronbach's alpha, the s
 ```{r}
 scales %>% 
   ungroup() %>% 
-  summarise(broom::tidy(cor.test(number_of_items, empirical_alpha)), sd_alpha = sd(empirical_alpha), n = n())
+  summarise(broom::tidy(cor.test(number_of_items, empirical_alpha)), sd_alpha = sd(empirical_alpha), n = n()) %>% 
+  knitr::kable()
+
 
 summary(lm(empirical_alpha ~ number_of_items, scales))
 summary(lm(empirical_alpha ~ number_of_items + synthetic_alpha, scales))
@@ -745,13 +748,18 @@ manifest_scores %>%
 How does number of items across the two scales relate to accuracy?
 
 ```{r}
-manifest_scores %>%
+by_item_number <- manifest_scores %>%
   mutate(items = number_of_items.x + number_of_items.y) %>%
   group_by(items) %>%
-  summarise(cor = cor(empirical_r, synthetic_r), n()) %>%
-  ggplot(aes(items, cor)) + 
-  geom_point()
+  summarise(broom::tidy(cor.test(empirical_r, synthetic_r)), pairwise_n = n()) 
 
+by_item_number %>% 
+  ggplot(aes(items, estimate, ymin = conf.low, ymax = conf.high)) + 
+  geom_pointrange() +
+  scale_y_continuous("Manifest accuracy (with 95% confidence interval)") +
+  xlab("Number of items summed across scales")
+
+lm(estimate ~ items, by_item_number, weights = 1/(by_item_number$conf.high-by_item_number$conf.low))
 
 manifest_scores %>%
   filter(number_of_items.x >= 10, number_of_items.y >= 10) %>%
