@@ -272,6 +272,45 @@ holdout_llm %>%
   kable()
 ```
 
+Is the accuracy lower for items that have low variance?
+
+```{r}
+item_variances <- holdout_human_data %>% summarise_all(~ sd(., na.rm = T)) %>% 
+  pivot_longer(everything(), names_to = "variable", values_to = "item_sd")
+
+by_max_cov <- holdout_llm %>% 
+  left_join(item_variances, by = c("variable_1" = "variable")) %>% 
+  left_join(item_variances, by = c("variable_2" = "variable"), suffix = c("_1", "_2")) %>% 
+  mutate(max_covariance = ceiling((item_sd_1 * item_sd_2)*10)/10)
+
+rs_by_max_cov <- by_max_cov %>% 
+  group_by(max_covariance) %>% 
+  filter(n() > 3) %>% 
+  summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), sd_emp_r = sd(empirical_r), n = n()) %>% 
+  select(max_covariance, r = estimate, conf.low, conf.high, n, sd_emp_r) %>% 
+  arrange(max_covariance)
+
+rs_by_max_cov%>% 
+  kable()
+rs_by_max_cov %>% ggplot(aes(max_covariance, r, ymin = conf.low, ymax = conf.high)) +
+  geom_pointrange()
+
+by_max_cov%>% 
+  filter(max_covariance > .7) %>% 
+  summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), sd_emp_r = sd(empirical_r), n = n()) %>% 
+  kable()
+
+holdout_llm %>% 
+  left_join(item_variances, by = c("variable_1" = "variable")) %>% 
+  left_join(item_variances, by = c("variable_2" = "variable"), suffix = c("_1", "_2")) %>% 
+  mutate(max_covariance = ceiling((item_sd_1 * item_sd_2)*10)/10) %>% 
+  filter(max_covariance > 1) %>% 
+  summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), sd_emp_r = sd(empirical_r), n = n()) %>% 
+  select(r = estimate, conf.low, conf.high, n, sd_emp_r) %>% 
+  knitr::kable()
+```
+
+
 
 Is the accuracy lower for the pre-trained model?
 

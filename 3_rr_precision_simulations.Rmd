@@ -45,8 +45,8 @@ pretrained_data_path = glue("./")
 
 set.seed(42)
 
-number_of_items <- 175
-number_of_scales <- 40
+number_of_items <- 240
+number_of_scales <- 84
 combinations_items <- choose(number_of_items, 2)
 combinations_scales <- choose(number_of_scales, 2)
 planned_N <- 400
