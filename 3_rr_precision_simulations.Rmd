@@ -46,7 +46,8 @@ pretrained_data_path = glue("./")
 set.seed(42)
 
 number_of_items <- 246
-number_of_scales <- 55
+number_of_scales <- 76
+number_of_scales_with_more_than_3_items <- 55
 combinations_items <- choose(number_of_items, 2)
 combinations_scales <- choose(number_of_scales, 2)
 combinations_scales <- 2811 # after eliminating scale-subscale pairs
@@ -103,7 +104,8 @@ for(i in 1:500) {
   )
 }
 
-sim_results %>% summarise(semi_latent_r = mean(est.std), mean_se = sqrt(mean(se^2)), max_se = max(se))
+sim_results %>% summarise(semi_latent_r = mean(est.std), mean_se = sqrt(mean(se^2)), max_se = max(se)) %>% 
+  knitr::kable()
 ```
 
 
@@ -185,7 +187,7 @@ realistic_scales <- scales %>% ungroup()
 
 sim_results <- tibble()
 for(i in 1:500) {
-  picked_scales <- realistic_scales %>% filter(!str_detect(scale, "random")) %>% sample_n(number_of_scales)
+  picked_scales <- realistic_scales %>% filter(!str_detect(scale, "random")) %>% sample_n(number_of_scales_with_more_than_3_items)
   subset <-
     bind_rows(picked_scales,
               realistic_scales %>% filter(str_detect(scale, "random")) %>% sample_n(200)
@@ -213,10 +215,8 @@ for(i in 1:500) {
                            standardizedsolution(fit) %>% filter(lhs == "PearsonLatent", rhs ==  "rel_llm_alpha")
   )
 }
-sim_results %>% summarise(semi_latent_r = mean(est.std), mean_se = sqrt(mean(se^2)), max_se = max(se))
-# 
-# scales %>% group_by(number_of_items) %>%
-#   summarise(cor(rel_real_alpha, rel_llm_alpha), n())
+sim_results %>% summarise(semi_latent_r = mean(est.std), mean_se = sqrt(mean(se^2)), max_se = max(se)) %>% 
+  knitr::kable()
 ```
 
 
@@ -259,5 +259,6 @@ for(i in 1:500) {
   )
 }
 
-sim_results %>% summarise(semi_latent_r = mean(est.std), mean_se = sqrt(mean(se^2)), max_se = max(se))
+sim_results %>% summarise(semi_latent_r = mean(est.std), mean_se = sqrt(mean(se^2)), max_se = max(se)) %>% 
+  knitr::kable()
 ```
