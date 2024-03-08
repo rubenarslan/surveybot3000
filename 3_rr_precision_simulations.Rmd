@@ -20,7 +20,7 @@ The following precision simulations all follow the same structure.
 We begin with item correlations, then reliabilities, then scale correlations.
 
 ```{r warning=F,message=F}
-knitr::opts_chunk$set(echo = TRUE, error = T)
+knitr::opts_chunk$set(echo = TRUE, error = T, warning = F, message = F)
 
 # Libraries and Settings
 
@@ -45,10 +45,11 @@ pretrained_data_path = glue("./")
 
 set.seed(42)
 
-number_of_items <- 240
-number_of_scales <- 84
+number_of_items <- 246
+number_of_scales <- 55
 combinations_items <- choose(number_of_items, 2)
 combinations_scales <- choose(number_of_scales, 2)
+combinations_scales <- 2811 # after eliminating scale-subscale pairs
 planned_N <- 400
 ```
 
@@ -74,7 +75,7 @@ sim_results <- tibble()
 library(lavaan)
 
 for(i in 1:500) {
-  items <- holdout %>% select(variable_1) %>% distinct() %>% sample_n(175) %>% pull(variable_1)
+  items <- holdout %>% select(variable_1) %>% distinct() %>% sample_n(number_of_items) %>% pull(variable_1)
 
   subset <- holdout %>% filter(variable_1 %in% items, variable_2 %in% items)
 
@@ -180,11 +181,6 @@ scales <- scales %>%
     alpha_se = mean(diff(unlist(psychometric::alpha.CI(rel_real_alpha, k = number_of_items, N = planned_N, level = 0.95))))
   )
 
-qplot(scales$alpha_se)
-qplot(scales$rel_real_alpha, scales$alpha_se)
-qplot(scales$number_of_items, scales$alpha_se)
-qplot(scales$rel_real_alpha, scales$alpha_se, color = scales$number_of_items)
-
 realistic_scales <- scales %>% ungroup()
 
 sim_results <- tibble()
@@ -233,9 +229,10 @@ sim_results <- tibble()
 library(lavaan)
 
 for(i in 1:500) {
-  scales <- manifest_scores %>% select(scale_a) %>% distinct() %>% sample_n(number_of_scales) %>% pull(scale_a)
+  scales <- manifest_scores %>% select(scale_a) %>% distinct() %>% pull(scale_a)
 
-  subset <- manifest_scores %>% filter(scale_a %in% scales, scale_b %in% scales)
+  subset <- manifest_scores %>% filter(scale_a %in% scales, scale_b %in% scales) %>% 
+    sample_n(combinations_scales)
 
   N <- planned_N
   subset <- subset %>% mutate(se = (1 - empirical_r^2)/sqrt(N - 3))
