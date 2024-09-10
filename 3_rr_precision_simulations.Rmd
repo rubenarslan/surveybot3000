@@ -47,10 +47,11 @@ set.seed(42)
 
 number_of_items <- 246
 number_of_scales <- 76
-number_of_scales_with_more_than_3_items <- 55
+number_of_scales_with_more_than_3_items <- 56
 combinations_items <- choose(number_of_items, 2)
-combinations_scales <- choose(number_of_scales, 2)
-combinations_scales <- 2811 # after eliminating scale-subscale pairs
+combinations_scales <- choose(number_of_scales_with_more_than_3_items, 2)
+scale_subscale_pairs <- 38
+combinations_scales <- combinations_scales - scale_subscale_pairs # after eliminating scale-subscale pairs
 planned_N <- 400
 ```
 

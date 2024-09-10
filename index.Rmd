@@ -391,7 +391,8 @@ for(i in 1:200) {
 }
 
 random_scales <- bind_rows(random_scales)
-scales <- bind_rows(scales, random_scales)
+real_scales <- scales
+scales <- bind_rows(real = real_scales, random = random_scales, .id = "type")
 
 source("global_functions.R")
 
@@ -560,7 +561,7 @@ ggplot(., aes(synthetic_alpha, empirical_alpha,
 
 ```{r}
 scales %>% 
-  filter(!str_detect(scale, "^random")) %>% 
+  filter(type != "random") %>% 
   mutate(empirical_alpha = sprintf("%.2f±%.3f", empirical_alpha,
                                empirical_alpha_se),
          synthetic_alpha = sprintf("%.2f", synthetic_alpha),
@@ -569,6 +570,13 @@ scales %>%
   select(scale, empirical_alpha, synthetic_alpha, number_of_items) %>% 
   DT::datatable(rownames = FALSE,
                 filter = "top")
+
+scales %>% ungroup() %>% 
+  summarise(mean(empirical_alpha), sd(empirical_alpha))
+scales %>% group_by(type) %>% 
+  summarise(mean(empirical_alpha), sd(empirical_alpha),
+            cor = broom::tidy(cor.test(synthetic_alpha, empirical_alpha)), n())
+psychometric::cRRr(0.632, 0.0992, 0.235)
 ```
 
 </details>
