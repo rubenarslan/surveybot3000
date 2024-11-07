@@ -7,8 +7,6 @@ output:
     toc_float: true
 ---
 
-## TODO:
-- 78 scales? should be 80 or 81 (manuscript)
 
 ```{css, echo=FALSE}
 summary {
@@ -118,6 +116,25 @@ model <- paste0('
 fit <- sem(model, data = rr_validation_llm)
 pt_fit <- sem(model, data = pt_rr_validation_llm)
 
+pt_m_synth_r_items <- brm(
+  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(variable_1, variable_2)),
+     sigma ~ poly(synthetic_r, degree = 3)), data = pt_rr_validation_llm, 
+  file = "ignore/m_pt_synth_rr_r_items_lm")
+
+newdata <- pt_m_synth_r_items$data %>% select(empirical_r, synthetic_r, empirical_r_se)
+epreds <- epred_draws(newdata = newdata, obj = pt_m_synth_r_items, re_formula = NA, ndraws = 200)
+preds <- predicted_draws(newdata = newdata, obj = pt_m_synth_r_items, re_formula = NA, ndraws = 200)
+epred_preds <- epreds %>% left_join(preds)
+by_draw <- epred_preds %>% group_by(.draw) %>% 
+  summarise(.epred = var(.epred),
+            .prediction = var(.prediction),
+            sigma = sqrt(.prediction - .epred),
+            semi_latent_r = sqrt(.epred/.prediction))
+rm(epred_preds)
+
+pt_accuracy_bayes_items <- by_draw %>% mean_hdci(semi_latent_r)
+
+
 m_synth_r_items <- brm(
   bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(variable_1, variable_2)),
      sigma ~ poly(synthetic_r, degree = 3)), data = rr_validation_llm, 
@@ -138,32 +155,39 @@ rm(epred_preds)
 
 accuracy_bayes_items <- by_draw %>% mean_hdci(semi_latent_r)
 
+
 bind_rows(
   pt_r %>% 
     mutate(model = "pre-trained", kind = "manifest") %>% 
     select(model, kind, accuracy = estimate, conf.low, conf.high),
   standardizedsolution(pt_fit) %>% 
     filter(lhs == "PearsonLatent", rhs ==  "synthetic_r") %>% 
-    mutate(model = "pre-trained", kind = "semi-latent (SEM)") %>% 
+    mutate(model = "pre-trained", kind = "latent outcome (SEM)") %>% 
     select(model, kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
+  pt_accuracy_bayes_items %>% 
+    mutate(model = "pre-trained", kind = "latent outcome (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = semi_latent_r, conf.low = .lower, conf.high = .upper),
   r %>% 
     mutate(model = "fine-tuned", kind = "manifest") %>% 
     select(model, kind, accuracy = estimate, conf.low, conf.high),
   standardizedsolution(fit) %>% 
     filter(lhs == "PearsonLatent", rhs ==  "synthetic_r") %>% 
-    mutate(model = "fine-tuned", kind = "semi-latent (SEM)") %>% 
+    mutate(model = "fine-tuned", kind = "latent outcome (SEM)") %>% 
     select(model, kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
   accuracy_bayes_items %>% 
-    mutate(model = "fine-tuned", kind = "semi-latent (Bayesian EIV)") %>% 
+    mutate(model = "fine-tuned", kind = "latent outcome (Bayesian EIV)") %>% 
     select(model, kind, accuracy = semi_latent_r, conf.low = .lower, conf.high = .upper)
   ) %>% 
   knitr::kable(digits = 2)
 ```
 
 
-<details><summary><h4>Prediction error plot according to synthetic estimate</h4></summary>
+<details>
+<summary>
+<h4>Prediction error plot according to synthetic estimate</h4>
+</summary>
 
 ```{r}
 m_synth_r_items
@@ -244,7 +268,10 @@ item_pair_table <- item_pair_table %>%
 rio::export(item_pair_table, "item_pair_table_rr.xlsx")
 ```
 
-<details><summary><h3>Robustness checks</h3></summary>
+<details>
+<summary>
+<h3>Robustness checks</h3>
+</summary>
 
 #### Accuracy by subject matter
 ##### Both items from same subject matter
@@ -364,8 +391,11 @@ pt_plot_items
 </details>
 
 
-
+#### Full table
 [Full table of synthetic and empirical item pair correlations](item_pair_table_rr.xlsx)
+
+
+
 
 
 ## Synthetic Reliabilities
@@ -500,32 +530,56 @@ by_draw <- epred_preds %>% group_by(.draw) %>%
 
 accuracy_bayes_rels <- by_draw %>% mean_hdci(semi_latent_r)
 
+pt_m_lmsynth_rel_scales <- brm(
+  bf(empirical_alpha | mi(empirical_alpha_se) ~ synthetic_alpha,
+     sigma ~ poly(synthetic_alpha, degree = 3)), data = scales %>% 
+                select(empirical_alpha, synthetic_alpha = pt_synthetic_alpha, empirical_alpha_se), 
+  file = "ignore/pt_m_synth_rr_rel_lm")
+
+newdata <- pt_m_lmsynth_rel_scales$data %>% select(empirical_alpha, synthetic_alpha, empirical_alpha_se)
+epreds <- epred_draws(newdata = newdata, obj = pt_m_lmsynth_rel_scales, re_formula = NA)
+preds <- predicted_draws(newdata = newdata, obj = pt_m_lmsynth_rel_scales, re_formula = NA)
+epred_preds <- epreds %>% left_join(preds)
+by_draw <- epred_preds %>% group_by(.draw) %>% 
+  summarise(.epred = var(.epred),
+            .prediction = var(.prediction),
+            sigma = sqrt(.prediction - .epred),
+            semi_latent_r = sqrt(.epred/.prediction))
+
+pt_accuracy_bayes_rels <- by_draw %>% mean_hdci(semi_latent_r)
+
 bind_rows(
   pt_r %>% 
     mutate(model = "pre-trained", kind = "manifest") %>% 
     select(model, kind, accuracy = estimate, conf.low, conf.high),
   standardizedsolution(pt_fit) %>% 
     filter(lhs == "latent_real_rel", rhs ==  "synthetic_alpha") %>% 
-    mutate(model = "pre-trained", kind = "semi-latent (SEM)") %>% 
+    mutate(model = "pre-trained", kind = "latent outcome (SEM)") %>% 
     select(model, kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
+  pt_accuracy_bayes_rels %>% 
+      mutate(model = "pre-trained", kind = "latent outcome (Bayesian EIV)") %>% 
+      select(model, kind, accuracy = semi_latent_r, conf.low = .lower, conf.high = .upper),
   r %>% 
     mutate(model = "fine-tuned", kind = "manifest") %>% 
     select(model, kind, accuracy = estimate, conf.low, conf.high),
   standardizedsolution(fit) %>% 
     filter(lhs == "latent_real_rel", rhs ==  "synthetic_alpha") %>% 
-    mutate(model = "fine-tuned", kind = "semi-latent (SEM)") %>% 
+    mutate(model = "fine-tuned", kind = "latent outcome (SEM)") %>% 
     select(model, kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
   accuracy_bayes_rels %>% 
-    mutate(model = "fine-tuned", kind = "semi-latent (Bayesian EIV)") %>% 
+    mutate(model = "fine-tuned", kind = "latent outcome (Bayesian EIV)") %>% 
     select(model, kind, accuracy = semi_latent_r, conf.low = .lower, conf.high = .upper)
   ) %>% 
   knitr::kable(digits = 2)
 ```
 
 
-<details><summary><h4>Prediction error plot according to synthetic estimate</h4></summary>
+<details>
+<summary>
+<h4>Prediction error plot according to synthetic estimate</h4>
+</summary>
 
 ```{r}
 m_lmsynth_rel_scales
@@ -593,7 +647,10 @@ ggplot(., aes(synthetic_alpha, empirical_alpha,
   ggplotly()
 ```
 
-<details><summary><h4>Table</h4></summary>
+<details>
+<summary>
+<h4>Table</h4>
+</summary>
 
 ```{r}
 scales %>% 
@@ -615,11 +672,14 @@ scales %>% group_by(type) %>%
 psychometric::cRRr(0.632, 0.0992, 0.235)
 ```
 
+
 </details>
 
 
 
-<details><summary><h3>Robustness checks</h3></summary>
+<details>
+<summary><h3>Robustness checks</h3>
+</summary>
 
 ```{r}
 scales %>% 
@@ -668,16 +728,18 @@ pt_plot_rels
 
 
 
+
+
 ## Synthetic Scale Correlations
 ```{r}
 manifest_scores = arrow::read_feather(file = file.path(data_path, glue("ignore.{model_name}.raw.validation-study-2024-11-01.scale_correlations.feather")))
 pt_manifest_scores = arrow::read_feather(file = file.path(data_path, glue("ignore.{pretrained_model_name}.raw.validation-study-2024-11-01.scale_correlations.feather")))
 
-n_distinct(manifest_scores$scale_a)
+n_distinct(c(manifest_scores$scale_a, manifest_scores$scale_b))
 
 manifest_scores <- manifest_scores %>%
- left_join(scales, by = c("scale_a" = "scale")) %>%
- left_join(scales, by = c("scale_b" = "scale"))
+ left_join(real_scales, by = c("scale_a" = "scale")) %>%
+ left_join(real_scales, by = c("scale_b" = "scale"))
 ```
 
 ### Accuracy
@@ -700,6 +762,23 @@ model <- paste0('
 fit <- sem(model, data = manifest_scores)
 pt_fit <- sem(model, data = pt_manifest_scores)
 
+
+pt_m_lmsynth_r_scales <- brm(
+  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(scale_a, scale_b)),
+     sigma ~ poly(synthetic_r, degree = 3)), data = pt_manifest_scores, 
+  file = "ignore/pt_m_synth_rr_r_scales_lm8")
+
+newdata <- pt_m_lmsynth_r_scales$data %>% select(empirical_r, synthetic_r, empirical_r_se)
+epreds <- epred_draws(newdata = newdata, obj = pt_m_lmsynth_r_scales, re_formula = NA)
+preds <- predicted_draws(newdata = newdata, obj = pt_m_lmsynth_r_scales, re_formula = NA)
+epred_preds <- epreds %>% left_join(preds)
+by_draw <- epred_preds %>% group_by(.draw) %>% 
+  summarise(.epred = var(.epred),
+            .prediction = var(.prediction),
+            sigma = sqrt(.prediction - .epred),
+            semi_latent_r = sqrt(.epred/.prediction))
+
+pt_accuracy_bayes_scales <- by_draw %>% mean_hdci(semi_latent_r)
 
 m_lmsynth_r_scales <- brm(
   bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(scale_a, scale_b)),
@@ -727,26 +806,32 @@ bind_rows(
     select(model, kind, accuracy = estimate, conf.low, conf.high),
   standardizedsolution(pt_fit) %>% 
     filter(lhs == "PearsonLatent", rhs ==  "synthetic_r") %>% 
-    mutate(model = "pre-trained", kind = "semi-latent (SEM)") %>% 
+    mutate(model = "pre-trained", kind = "latent outcome (SEM)") %>% 
     select(model, kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
+  pt_accuracy_bayes_scales %>% 
+    mutate(model = "pre-trained", kind = "latent outcome (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = semi_latent_r, conf.low = .lower, conf.high = .upper),
   r %>% 
     mutate(model = "fine-tuned", kind = "manifest") %>% 
     select(model, kind, accuracy = estimate, conf.low, conf.high),
   standardizedsolution(fit) %>% 
     filter(lhs == "PearsonLatent", rhs ==  "synthetic_r") %>% 
-    mutate(model = "fine-tuned", kind = "semi-latent (SEM)") %>% 
+    mutate(model = "fine-tuned", kind = "latent outcome (SEM)") %>% 
     select(model, kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
   accuracy_bayes_scales %>% 
-    mutate(model = "fine-tuned", kind = "semi-latent (Bayesian EIV)") %>% 
+    mutate(model = "fine-tuned", kind = "latent outcome (Bayesian EIV)") %>% 
     select(model, kind, accuracy = semi_latent_r, conf.low = .lower, conf.high = .upper)
   ) %>% 
   knitr::kable(digits = 2)
 ```
 
 
-<details><summary><h4>Prediction error plot according to synthetic estimate</h4></summary>
+<details>
+<summary>
+<h4>Prediction error plot according to synthetic estimate</h4>
+</summary>
 
 ```{r}
 m_lmsynth_r_scales
@@ -806,7 +891,10 @@ ggplot(., aes(synthetic_r, empirical_r,
   ggplotly()
 ```
 
-<details><summary><h4>Table</h4></summary>
+<details>
+<summary>
+<h4>Table</h4>
+</summary>
 
 ```{r}
 manifest_scores %>% 
@@ -826,7 +914,10 @@ manifest_scores %>%
 
 
 
-<details><summary><h3>Robustness checks</h3></summary>
+<details>
+<summary>
+<h3>Robustness checks</h3>
+</summary>
 
 How does number of items across the two scales relate to accuracy?
 
@@ -834,6 +925,7 @@ How does number of items across the two scales relate to accuracy?
 by_item_number <- manifest_scores %>%
   mutate(items = number_of_items.x + number_of_items.y) %>%
   group_by(items) %>%
+  filter(n() > 10) %>% 
   summarise(broom::tidy(cor.test(empirical_r, synthetic_r)), pairwise_n = n()) 
 
 by_item_number %>% 
@@ -877,74 +969,69 @@ pt_plot_scales
 library(patchwork)
 pt_plot_items2 <- pt_plot_items +
   annotate("text", size = 2.5, x = -.1, y = 0.5, vjust = 1, hjust = 1, label = "r(I felt fearful,\nI felt that people dislike me)", color = "#00A0B0") +
-  annotate("segment", x = -.1, y = 0.5, xend = 0.5369071, yend = 0.5875796, color = "#00A0B0", alpha = 0.7) +
+  annotate("segment", x = -.1, y = 0.5, xend = 0.4185763, yend = 0.5875796, color = "#00A0B0", alpha = 0.7) +
   
-  annotate("text", size = 2.5, x = 0, y = -0.8, hjust = 0, label = "r(I find it difficult to allow myself to depend on others,\nI am comfortable depending on others)", color = "#00A0B0") + 
-  annotate("segment", x = 0, y = -0.75, xend = 0.09218573, yend = -0.7020895, color = "#00A0B0", alpha = 0.7)
+  annotate("text", size = 2.5, x = 0, y = -0.9, hjust = 0.5, label = "r(I find it difficult to allow myself to depend on others,\nI am comfortable depending on others)", color = "#00A0B0") + 
+  annotate("segment", x = 0, y = -0.83, xend = 0.5842606, yend = -0.7020895, color = "#00A0B0", alpha = 0.7)
   
 plot_items2 <- plot_items +
   annotate("text", size = 3, x = -1, y = 0.98, vjust = 0, hjust = 0, label = with(accuracy_bayes_items, { sprintf("accuracy = %.2f [%.2f;%.2f]", semi_latent_r, .lower, .upper) })) +
   annotate("text", size = 2.5, x = -.1, y = 0.5, vjust = 1, hjust = 1, label = "r(I felt fearful,\nI felt that people dislike me)", color = "#00A0B0") +
   annotate("segment", x = -.1, y = 0.5, xend = 0.5369071, yend = 0.5875796, color = "#00A0B0", alpha = 0.7) +
   
-  annotate("text", size = 2.5, x = 0, y = -0.8, hjust = 0, label = "r(I find it difficult to allow myself to depend on others,\nI am comfortable depending on others)", color = "#00A0B0") + 
-  annotate("segment", x = 0, y = -0.75, xend = 0.09218573, yend = -0.7020895, color = "#00A0B0", alpha = 0.7)
-plot_items2  
+  annotate("text", size = 2.5, x = 0, y = -0.9, hjust = 0.5, label = "r(I find it difficult to allow myself to depend on others,\nI am comfortable depending on others)", color = "#00A0B0") + 
+  annotate("segment", x = 0, y = -0.83, xend = 0.09218573, yend = -0.7020895, color = "#00A0B0", alpha = 0.7)
 
 pt_plot_rels2 <- pt_plot_rels + 
-  annotate("text", size = 2.5, x = 0.61, y = 0.25, hjust = 0, label = "Fear of COVID", color = "#00A0B0") +
-  annotate("segment", x = 0.7, y = 0.27, xend = 0.89, yend = 0.93, color = "#00A0B0", alpha = 0.7) +
+  annotate("text", size = 2.5, x = 0.8, y = 0.5, hjust = 0.5, label = "Fear of COVID", color = "#00A0B0") +
+  annotate("segment", x = 0.8, y = 0.54, xend = 0.9563192, yend = 0.9262542, color = "#00A0B0", alpha = 0.7) +
   
   annotate("text", size = 2.5, x = -0.02, y = 0.95, hjust = 0, label = "HEXACO fairness", color = "#00A0B0") +
-  annotate("segment", x = 0.11, y = 0.93, xend = 0.03, yend = 0.82, color = "#00A0B0", alpha = 0.7)
+  annotate("segment", x = 0.11, y = 0.93, xend = -0.3262759, yend = 0.8217475, color = "#00A0B0", alpha = 0.7)
 
 plot_rels2 <- plot_rels + 
   annotate("text", size = 3, x = 0, y = .985, vjust = 0, hjust = 0, label = with(accuracy_bayes_rels, { sprintf("accuracy = %.2f [%.2f;%.2f]", semi_latent_r, .lower, .upper) })) +
   annotate("text", size = 2.5, x = 0.4, y = 0.1, hjust = 0, label = "randomly formed scales", color = "#6A4A3C") +
-  annotate("segment", x = 0.395, y = 0.1, xend = 0.39, yend = 0.4864297, color = "#6A4A3C", alpha = 0.7) +
-  annotate("segment", x = 0.395, y = 0.1, xend = 0.285, yend = 0.2279919, color = "#6A4A3C", alpha = 0.7) +
-  annotate("segment", x = 0.395, y = 0.1, xend = 0.2, yend = 0.075, color = "#6A4A3C", alpha = 0.7) +
-  annotate("text", size = 2.5, x = 0.61, y = 0.25, hjust = 0, label = "Fear of COVID", color = "#00A0B0") +
-  annotate("segment", x = 0.7, y = 0.27, xend = 0.89, yend = 0.93, color = "#00A0B0", alpha = 0.7) +
+  annotate("segment", x = 0.395, y = 0.1, xend = 0.3349444, yend = 0.3690176, color = "#6A4A3C", alpha = 0.7) +
+  annotate("segment", x = 0.395, y = 0.1, xend = 0.2016358, yend = 0.22330861, color = "#6A4A3C", alpha = 0.7) +
+  annotate("segment", x = 0.395, y = 0.1, xend = 0.2142727, yend = 0.01842275, color = "#6A4A3C", alpha = 0.7) +
   
-  annotate("text", size = 2.5, x = -0.02, y = 0.9, hjust = 0, label = "HEXACO fairness", color = "#00A0B0") +
-  annotate("segment", x = 0.11, y = 0.89, xend = 0.03, yend = 0.82, color = "#00A0B0", alpha = 0.7)
+  annotate("text", size = 2.5, x = 0.8, y = 0.5, hjust = 0.5, label = "Fear of COVID", color = "#00A0B0") +
+  annotate("segment", x = 0.8, y = 0.54, xend = 0.8864024, yend = 0.9262542, color = "#00A0B0", alpha = 0.7) +
+  
+  annotate("text", size = 2.5, x = -0.02, y = 0.95, hjust = 0, label = "HEXACO fairness", color = "#00A0B0") +
+  annotate("segment", x = 0.11, y = 0.93, xend = 0.0305553, yend = 0.8217475, color = "#00A0B0", alpha = 0.7)
 
 
 pt_plot_scales2 <- pt_plot_scales +
   annotate("text", size = 2.5, x = -0.1, y = 0.5, hjust = 1, label = "r(UWES vigor,\nWGS work gratitude)", color = "#00A0B0") +
-  annotate("segment", x = -.1, y = 0.5, xend = .55, yend = .57, color = "#00A0B0", alpha = 0.7) +
+  annotate("segment", x = -.1, y = 0.5, xend = 0.6586402, yend = 0.5683167, color = "#00A0B0", alpha = 0.7) +
   
-  annotate("text", size = 2.5, x = -.1, y = -0.9, hjust = 0, label = "r(CES-D well-being,\nCES-D depressive affect)", color = "#00A0B0") +
-  annotate("segment", x = -.1, y = -.85, xend = 0.02, yend = -0.76, color = "#00A0B0", alpha = 0.7)
+  annotate("text", size = 2.5, x = -.1, y = -0.9, hjust = 0.5, label = "r(CES-D well-being,\nCES-D depressive affect)", color = "#00A0B0") +
+  annotate("segment", x = -.03, y = -.85, xend = 0.4963392, yend = -0.7583637, color = "#00A0B0", alpha = 0.7)
 
 
 plot_scales2 <- plot_scales +
   annotate("text", size = 3, x = -1, y = 0.98, vjust = 0, hjust = 0, label = with(accuracy_bayes_scales, { sprintf("accuracy = %.2f [%.2f;%.2f]", semi_latent_r, .lower, .upper) })) +
   annotate("text", size = 2.5, x = -0.1, y = 0.5, hjust = 1, label = "r(UWES vigor,\nWGS work gratitude)", color = "#00A0B0") +
-  annotate("segment", x = -.1, y = 0.5, xend = .55, yend = .57, color = "#00A0B0", alpha = 0.7) +
+  annotate("segment", x = -.1, y = 0.5, xend = .55, yend = 0.5683167, color = "#00A0B0", alpha = 0.7) +
   
-  annotate("text", size = 2.5, x = -.1, y = -0.9, hjust = 0, label = "r(CES-D well-being,\nCES-D depressive affect)", color = "#00A0B0") +
-  annotate("segment", x = -.1, y = -.85, xend = 0.02, yend = -0.76, color = "#00A0B0", alpha = 0.7)
+  annotate("text", size = 2.5, x = -.1, y = -0.9, hjust = 0.5, label = "r(CES-D well-being,\nCES-D depressive affect)", color = "#00A0B0") +
+  annotate("segment", x = -.03, y = -.85, xend = 0.02, yend = -0.7583637, color = "#00A0B0", alpha = 0.7)
 
 
-(pt_plot_items2+
-    pt_plot_rels2 + ggtitle("") +
+(pt_plot_items2 + ggtitle("Pre-trained model before domain adaptation and fine-tuning") +
+    pt_plot_rels2 +
     pt_plot_scales2) /
 
 
-(plot_items2 +
-    plot_rels2 + ggtitle("SurveyBot 3000")  +
-    plot_scales2) +
-  plot_annotation(
-  title = 'Pre-trained model before domain adaptation and fine-tuning'
-)
+(plot_items2 + ggtitle("SurveyBot 3000") +
+    plot_rels2  +
+    plot_scales2)
 
 ggsave("ignore/Figure_rr.pdf", width = 8.3, height = 6, device = grDevices::cairo_pdf)
 ggsave("ignore/Figure_rr.png", width = 8.3, height = 6)
-
-
-
-# ggsave("ignore/Figure_rr.svg", width = 8.3, height = 5.5, device = svglite::svglite)
 ```
+
+
 
