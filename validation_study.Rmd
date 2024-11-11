@@ -584,6 +584,8 @@ ggplot(aes(x = `exclusion criteria`, accuracy, ymin = conf.low, ymax = conf.high
 ## Synthetic Reliabilities
 ```{r}
 scales <- readRDS(file = file.path(data_path, glue("ignore.scales_with_alpha_se_rr.rds")))
+real_scales <- scales %>% filter(type == "real")
+scales <- scales %>% filter(number_of_items >= 3)
 ```
 
 
@@ -932,8 +934,8 @@ manifest_scores = arrow::read_feather(file = file.path(data_path, glue("ignore.{
 pt_manifest_scores = arrow::read_feather(file = file.path(data_path, glue("ignore.{pretrained_model_name}.raw.validation-study-2024-11-01.scale_correlations.feather")))
 
 manifest_scores <- manifest_scores %>%
- left_join(scales, by = c("scale_a" = "scale")) %>%
- left_join(scales, by = c("scale_b" = "scale"))
+ left_join(real_scales, by = c("scale_a" = "scale")) %>%
+ left_join(real_scales, by = c("scale_b" = "scale"))
 ```
 
 ### Accuracy

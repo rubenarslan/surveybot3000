@@ -156,6 +156,7 @@ arrow::write_feather(pt_manifest_scores, sink = file.path(data_path, glue("ignor
 mapping_data <- rr_validation_mapping_data %>%
   rename(scale_0 = scale0,
          scale_1 = scale1)
+
 items_by_scale <- bind_rows(
   scales %>% select(-keyed) %>% filter(scale_1 == "") %>% left_join(mapping_data %>% select(-scale_1), by = c("instrument", "scale_0")),
   scales %>% select(-keyed) %>% filter(scale_1 != "") %>% left_join(mapping_data, by = c("instrument", "scale_0", "scale_1"))
@@ -188,13 +189,13 @@ nrow(random_scales)
 write_rds(random_scales, file = file.path(data_path, glue("ignore.random_scales_rr.rds")))
 
 
-rr_validation_llm <- rr_validation %>%
-  left_join(rr_validation_mapping_data %>% select(variable_1 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>%
-  left_join(rr_validation_mapping_data %>% select(variable_2 = variable, InstrumentB = instrument, ScaleB = scale_0, SubscaleB = scale_1))
+rr_validation_llm <- rr_validation_item_pairs %>%
+  left_join(mapping_data %>% select(variable_1 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>%
+  left_join(mapping_data %>% select(variable_2 = variable, InstrumentB = instrument, ScaleB = scale_0, SubscaleB = scale_1))
 
-pt_rr_validation_llm <- pt_rr_validation %>%
-  left_join(rr_validation_mapping_data %>% select(variable_1 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>%
-  left_join(rr_validation_mapping_data %>% select(variable_2 = variable, InstrumentB = instrument, ScaleB = scale_0, SubscaleB = scale_1))
+pt_rr_validation_llm <- pt_rr_validation_item_pairs %>%
+  left_join(mapping_data %>% select(variable_1 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>%
+  left_join(mapping_data %>% select(variable_2 = variable, InstrumentB = instrument, ScaleB = scale_0, SubscaleB = scale_1))
 
 cors_llm <- rr_validation_item_pairs %>%
   select(x = variable_1, y = variable_2, r = synthetic_r) %>%
@@ -210,6 +211,13 @@ pt_cors_llm <- pt_rr_validation_item_pairs %>%
   igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
 diag(pt_cors_llm) <- 1
 
+cors_real <- rr_validation_llm %>% 
+  select(x = variable_1, y = variable_2, r = empirical_r) %>%
+  as.data.frame() |>
+  igraph::graph_from_data_frame(directed = FALSE) |>
+  igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
+diag(cors_real) <- 1
+
 real_scales <- items_by_scale %>%
   group_by(scale) %>%
   summarise(
@@ -223,18 +231,18 @@ real_scales <- items_by_scale %>%
 
 scales <- bind_rows(real = real_scales, random = random_scales, .id = "type")
 
-scales <- scales %>% filter(number_of_items >= 3)
-
 rr_validation_human_data <- rr_validation_human_data %>% haven::zap_labels()
 scales <- scales %>%
   rowwise() %>%
   mutate(pt_r_llm = list(pt_cors_llm[items, items]),
          r_llm = list(cors_llm[items, items]),
+         r_real = list(cors_real[items, items]),
+         reverse_items_by_1st = list(find_reverse_items_by_first_item(r_real, keyed)),
          N_real = rr_validation_item_pairs %>% 
            filter(variable_1 %in% items, variable_2 %in% items) %>% 
            summarise(min_n=min(pairwise_n)) %>% pull(min_n)) %>%
   mutate(
-    rel_real = list(psych::alpha(rr_validation_human_data[, items], keys = reverse_items, n.iter = 100)),
+    rel_real = list(psych::alpha(rr_validation_human_data[, items], keys = reverse_items, n.iter = 1000)),
     rel_llm = list(psych::alpha(r_llm, keys = reverse_items, n.obs = N_real)$feldt),
     rel_pt_llm = list(psych::alpha(pt_r_llm, keys = reverse_items, n.obs = N_real)$feldt)) %>%
   mutate(empirical_alpha = rel_real$feldt$alpha$raw_alpha,
