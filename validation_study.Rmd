@@ -86,7 +86,8 @@ After exclusions, we had data on N=`r total_N` respondents. The item with the mo
 ```{r}
 rr_validation_llm <- rr_validation %>%
   left_join(rr_validation_mapping_data %>% select(variable_1 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>%
-  left_join(rr_validation_mapping_data %>% select(variable_2 = variable, InstrumentB = instrument, ScaleB = scale_0, SubscaleB = scale_1))
+  left_join(rr_validation_mapping_data %>% select(variable_2 = variable, InstrumentB = instrument, ScaleB = scale_0, SubscaleB = scale_1)) %>% 
+  left_join(pt_rr_validation %>% select(variable_1, variable_2, pt_synthetic_r = synthetic_r))
 
 pt_rr_validation_llm <- pt_rr_validation %>%
   left_join(rr_validation_mapping_data %>% select(variable_1 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>%
@@ -117,7 +118,7 @@ pt_fit <- sem(model, data = pt_rr_validation_llm)
 
 pt_m_synth_r_items <- brm(
   bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(variable_1, variable_2)),
-     sigma ~ poly(synthetic_r, degree = 3)), data = pt_rr_validation_llm, 
+     sigma ~ s(synthetic_r)), data = pt_rr_validation_llm, 
   file = "ignore/m_pt_synth_rr_r_items_lm")
 
 newdata <- pt_m_synth_r_items$data %>% select(empirical_r, synthetic_r, empirical_r_se)
@@ -136,7 +137,7 @@ pt_accuracy_bayes_items <- by_draw %>% mean_hdci(latent_r)
 
 m_synth_r_items <- brm(
   bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(variable_1, variable_2)),
-     sigma ~ poly(synthetic_r, degree = 3)), data = rr_validation_llm, 
+     sigma ~ s(synthetic_r)), data = rr_validation_llm, 
   file = "ignore/m_synth_rr_r_items_lm")
 
 sd_synth <- sd(m_synth_r_items$data$synthetic_r)
@@ -293,8 +294,8 @@ rr_validation_llm_domain <- rr_validation_llm %>%
 rr_validation_llm_domain %>% 
   filter(DomainA == DomainB) %>% 
   group_by(DomainA) %>% 
-  summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), sd_emp_r = sd(empirical_r), n = n()) %>% 
-  select(instrument = DomainA, r = estimate, conf.low, conf.high, n, sd_emp_r) %>% 
+  summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), pt_cor = cor(pt_synthetic_r, empirical_r), sd_emp_r = sd(empirical_r), n = n()) %>% 
+  select(instrument = DomainA, r = estimate, conf.low, conf.high, pt_cor, n, sd_emp_r) %>% 
   arrange(r) %>% 
   kable(digits = 2, caption = "Accuracy by domain when both items are from the same domain")
 ```
@@ -307,8 +308,8 @@ bind_rows(rr_validation_llm_domain %>%
   filter(DomainA != DomainB) %>% 
   rename(DomainA = DomainB, DomainB = DomainA)) %>% 
   group_by(DomainA) %>% 
-  summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), sd_emp_r = sd(empirical_r), n = n()) %>% 
-  select(instrument = DomainA, r = estimate, conf.low, conf.high, n, sd_emp_r) %>% 
+  summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), pt_cor = cor(pt_synthetic_r, empirical_r), sd_emp_r = sd(empirical_r), n = n()) %>% 
+  select(instrument = DomainA, r = estimate, conf.low, conf.high, pt_cor, n, sd_emp_r) %>% 
   arrange(r) %>% 
   kable(digits = 2, caption = "Accuracy by domain when items are from different domains")
 ```
@@ -320,8 +321,8 @@ rr_validation_llm %>%
   filter(InstrumentA == InstrumentB) %>% 
   left_join(items_by_scale %>% select(variable_1 = variable, keyed = keyed) %>% distinct()) %>% 
   group_by(InstrumentA) %>% 
-  summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), sd_emp_r = sd(empirical_r), n = n(), reverse_item_percentage = sum(keyed == -1, na.rm = TRUE)/n()) %>% 
-  select(instrument = InstrumentA, r = estimate, conf.low, conf.high, n, sd_emp_r, reverse_item_percentage) %>% 
+  summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), pt_cor = cor(pt_synthetic_r, empirical_r), sd_emp_r = sd(empirical_r), n = n(), reverse_item_percentage = sum(keyed == -1, na.rm = TRUE)/n()) %>% 
+  select(instrument = InstrumentA, r = estimate, conf.low, conf.high, pt_cor, n, sd_emp_r, reverse_item_percentage) %>% 
   arrange(r) %>% 
   kable(digits = 2, caption = "Accuracy by instrument (within items belonging to the same instrument)")
 ```
@@ -333,8 +334,8 @@ r_by_item <- rr_validation_llm %>%
   left_join(items_by_scale %>% select(variable_1 = variable, keyed = keyed, item_text) %>% distinct()) %>% 
   group_by(variable_1) %>% 
   filter(n() > 3) %>% 
-  summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), sd_emp_r = sd(empirical_r), n = n(), reverse_item_percentage = sum(keyed == -1)/n(), item_text_length = first(str_length(item_text))) %>% 
-  select(r = estimate, conf.low, conf.high, n, sd_emp_r, reverse_item_percentage, item_text_length) %>% 
+  summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), pt_cor = cor(pt_synthetic_r, empirical_r), sd_emp_r = sd(empirical_r), n = n(), reverse_item_percentage = sum(keyed == -1)/n(), item_text_length = first(str_length(item_text))) %>% 
+  select(r = estimate, conf.low, conf.high, pt_cor, n, sd_emp_r, reverse_item_percentage, item_text_length) %>% 
   arrange(r)
 
 r_by_item %>% ggplot(aes(item_text_length, r, color = factor(reverse_item_percentage))) + 
@@ -506,7 +507,7 @@ r_goldammer_1 <- rr_human_data_all %>%
 				 even_odd_outlier = even_odd > -.30,
 				 psychsyn_outlier = psychsyn < 0.22,
 				 psychant_outlier = psychant > -0.03,
-				 mahal_outlier = careless::mahad(rr_human_data_all %>% select(starts_with(main_qs)), flag = TRUE, confidence = .999)$flagged) %>% 
+				 mahal_outlier = careless::mahad(rr_human_data_all %>% select(starts_with(main_qs)), plot = FALSE, flag = TRUE, confidence = .999)$flagged) %>% 
 	mutate(included = !time_per_item_outlier & !even_odd_outlier & !psychsyn_outlier & !psychant_outlier & !mahal_flagged) %>% 
   filter(included) %>% 
   manifest_and_latent_r() %>% 
@@ -517,7 +518,7 @@ r_goldammer_2 <- rr_human_data_all %>%
 				 even_odd_outlier = even_odd > -.42,
 				 psychsyn_outlier = psychsyn < -0.03,
 				 psychant_outlier = psychant > .36,
-				 mahal_outlier = careless::mahad(rr_human_data_all %>% select(starts_with(main_qs)), flag = TRUE, confidence = .95)$flagged) %>% 
+				 mahal_outlier = careless::mahad(rr_human_data_all %>% select(starts_with(main_qs)), plot = FALSE, flag = TRUE, confidence = .95)$flagged) %>% 
 	mutate(included = !time_per_item_outlier & !even_odd_outlier & !psychsyn_outlier & !psychant_outlier & !mahal_flagged) %>% 
   filter(included) %>% 
   manifest_and_latent_r() %>% 
@@ -529,7 +530,7 @@ r_goldammer_3 <- rr_human_data_all %>%
 				 even_odd_outlier = even_odd > -.26,
 				 psychsyn_outlier = psychsyn < -0.30,
 				 psychant_outlier = psychant > .55,
-				 mahal_outlier = careless::mahad(rr_human_data_all %>% select(starts_with(main_qs)), flag = TRUE, confidence = .99)$flagged) %>% 
+				 mahal_outlier = careless::mahad(rr_human_data_all %>% select(starts_with(main_qs)), plot = FALSE, flag = TRUE, confidence = .99)$flagged) %>% 
 	mutate(included = !time_per_item_outlier & !even_odd_outlier & !psychsyn_outlier & !psychant_outlier & !mahal_flagged) %>% 
   filter(included) %>% 
   manifest_and_latent_r() %>% 
@@ -538,10 +539,42 @@ r_goldammer_3 <- rr_human_data_all %>%
 	
 r_strict_reading_of_prereg <- rr_human_data_all %>% 
     mutate(psychsyn_outlier = psychsyn < 0.6,
-      psychant_outlier = psychant > -0.4) %>%
-    filter(if_all(c(longstring_outlier, mahal_dist_outlier, psychsyn_outlier, psychant_outlier, even_odd_outlier), ~ . == FALSE)) %>%
+      psychant_outlier = psychant > -0.4,
+      not_us_citizen = Nationality != "United States"
+      ) %>%
+    filter(if_all(c(longstring_outlier, mahal_dist_outlier, psychsyn_outlier, psychant_outlier, even_odd_outlier, not_us_citizen), ~ . == FALSE)) %>%
   manifest_and_latent_r() %>% 
-  mutate(`exclusion criteria` = "Strict preregistered criteria: <br>- odd-even r < mean + 0.2 * SD<br>- psychometric synonym r < .60<br>- psychometric antonym r > -0.40<br>- Mahalanobis distance < mean + 0.5 * SD")
+  mutate(`exclusion criteria` = "Strict preregistered criteria: <br>- odd-even r < mean + 0.2 * SD<br>- psychometric synonym r < .60<br>- psychometric antonym r > -0.40<br>- Mahalanobis distance < mean + 0.5 * SD<br>-Not US citizen")
+
+
+r_main_us <- rr_human_data_all %>% 
+	mutate(time_per_item_outlier = time_per_item < 2,
+				 even_odd_outlier = even_odd >= -.45,
+				 psychsyn_outlier = psychsyn < 0.22,
+				 psychant_outlier = psychant > -0.03,
+				 mahal_outlier = careless::mahad(rr_human_data_all %>% select(starts_with(main_qs)), plot = FALSE, flag = TRUE, confidence = .99)$flagged,
+				 us_citizen = Nationality == "United States",
+				 english_first_language = Language == "English") %>% 
+	mutate(included = !not_serious & !time_per_item_outlier & 
+	         !even_odd_outlier & !psychsyn_outlier & !psychant_outlier & !mahal_flagged & us_citizen & english_first_language) %>% 
+  filter(included) %>% 
+  manifest_and_latent_r() %>% 
+  mutate(`exclusion criteria` = "Adapted + US English: <br>- the adapted criteria<br>- US citizens, not just residents,- English first language")
+
+r_main_approvals <- rr_human_data_all %>% 
+	mutate(time_per_item_outlier = time_per_item < 2,
+				 even_odd_outlier = even_odd >= -.45,
+				 psychsyn_outlier = psychsyn < 0.22,
+				 psychant_outlier = psychant > -0.03,
+				 mahal_outlier = careless::mahad(rr_human_data_all %>% select(starts_with(main_qs)), plot = FALSE, flag = TRUE, confidence = .99)$flagged,
+				 us_citizen = Nationality == "United States",
+				 more_than_20_approvals = `Total approvals` > 20,
+				 english_first_language = Language == "English") %>% 
+	mutate(included = !not_serious & !time_per_item_outlier & 
+	         !even_odd_outlier & !psychsyn_outlier & !psychant_outlier & !mahal_flagged & us_citizen & more_than_20_approvals) %>% 
+  filter(included) %>% 
+  manifest_and_latent_r() %>% 
+  mutate(`exclusion criteria` = "Adapted + US + > 20 approvals: <br>- the adapted criteria<br>- US citizens, not just residents,- More than 20 approvals")
 
 
 r_adapted_reading_of_prereg <- rr_human_data_all %>% 
@@ -553,19 +586,22 @@ r_adapted_reading_of_prereg <- rr_human_data_all %>%
 ```
 
 
+The manifest accuracy is expected to decrease slightly with sample size because it is attenuated by sampling error in the empirical correlations. The latent accuracy should only grow more uncertain with decreased sample size.
+
 ```{r}
 exclusion_criteria <- bind_rows(
   r_all, r_main, r_strict_reading_of_prereg, r_adapted_reading_of_prereg, 
-  r_goldammer_1, r_goldammer_2, r_goldammer_3
+  r_goldammer_1, r_goldammer_2, r_goldammer_3, r_main_us, r_main_approvals
   )
 exclusion_criteria %>% 
     select(`exclusion criteria`, model, kind, accuracy, conf.low, conf.high, `max N`) %>% 
   knitr::kable(digits = 2, caption = "Accuracy when human data is filtered by different exclusion criteria", format = "markdown")
 
 exclusion_criteria %>% 
-  mutate(`exclusion criteria` = fct_rev(fct_inorder(str_sub(`exclusion criteria`, 1, coalesce(str_locate(`exclusion criteria`, ":")[, 1]-1, -1))))) %>% 
+  mutate(`exclusion criteria` = fct_rev(fct_inorder(str_c(str_sub(`exclusion criteria`, 1, coalesce(str_locate(`exclusion criteria`, ":")[, 1]-1, -1)),", n=", `max N`)))) %>% 
 ggplot(aes(x = `exclusion criteria`, accuracy, ymin = conf.low, ymax = conf.high, color = kind)) +
   geom_pointrange() + 
+  scale_color_viridis_d(end = 0.7) +
   geom_text(aes(label = sprintf("%.2f", accuracy)), vjust = -1) +
   coord_flip()
 ```
@@ -613,7 +649,7 @@ pt_fit <- sem(model, data = scales %>%
 # Bayesian EIV PT
 pt_m_lmsynth_rel_scales <- brm(
   bf(empirical_alpha | mi(empirical_alpha_se) ~ synthetic_alpha,
-     sigma ~ poly(synthetic_alpha, degree = 3)), data = scales %>% 
+     sigma ~ s(synthetic_alpha)), data = scales %>% 
                 select(empirical_alpha, synthetic_alpha = pt_synthetic_alpha, empirical_alpha_se), 
   file = "ignore/pt_m_synth_rr_rel_lm")
 
@@ -632,7 +668,7 @@ pt_accuracy_bayes_rels <- by_draw %>% mean_hdci(latent_r)
 # Bayesian EIV FT
 m_lmsynth_rel_scales <- brm(
   bf(empirical_alpha | mi(empirical_alpha_se) ~ synthetic_alpha,
-     sigma ~ poly(synthetic_alpha, degree = 3)), data = scales, 
+     sigma ~ s(synthetic_alpha)), data = scales, 
   iter = 6000, 
   file = "ignore/m_synth_rr_rel_lm")
 
@@ -842,7 +878,7 @@ bind_rows(
 ```{r}
 m_lmsynth_rel_scales_s1 <- brm(
   bf(empirical_alpha | mi(empirical_alpha_se) ~ synthetic_alpha,
-     sigma ~ poly(synthetic_alpha, degree = 3)), data = s1_scales, 
+     sigma ~ s(synthetic_alpha)), data = s1_scales, 
   iter = 6000, control = list(adapt_delta = 0.9),
   file = "ignore/m_synth_rr_rel_lm_as_stage_1")
 
@@ -935,7 +971,17 @@ pt_manifest_scores = arrow::read_feather(file = file.path(data_path, glue("ignor
 
 manifest_scores <- manifest_scores %>%
  left_join(real_scales, by = c("scale_a" = "scale")) %>%
+ left_join(real_scales, by = c("scale_b" = "scale")) %>% 
+  left_join(pt_manifest_scores %>% select(scale_a, scale_b, pt_synthetic_r = synthetic_r), by = c("scale_a", "scale_b"))
+
+pt_manifest_scores <- pt_manifest_scores %>%
+ left_join(real_scales, by = c("scale_a" = "scale")) %>%
  left_join(real_scales, by = c("scale_b" = "scale"))
+
+manifest_scores_all <- manifest_scores
+pt_manifest_scores_all <- pt_manifest_scores
+manifest_scores <- manifest_scores %>% filter(number_of_items.x >= 3, number_of_items.y >= 3)
+pt_manifest_scores <- pt_manifest_scores %>% filter(number_of_items.x >= 3, number_of_items.y >= 3)
 ```
 
 ### Accuracy
@@ -961,7 +1007,7 @@ pt_fit <- sem(model, data = pt_manifest_scores)
 
 pt_m_lmsynth_r_scales <- brm(
   bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(scale_a, scale_b)),
-     sigma ~ poly(synthetic_r, degree = 3)), data = pt_manifest_scores, 
+     sigma ~ s(synthetic_r)), data = pt_manifest_scores, 
   file = "ignore/pt_m_synth_rr_r_scales_lm8")
 
 newdata <- pt_m_lmsynth_r_scales$data %>% select(empirical_r, synthetic_r, empirical_r_se)
@@ -978,7 +1024,7 @@ pt_accuracy_bayes_scales <- by_draw %>% mean_hdci(latent_r)
 
 m_lmsynth_r_scales <- brm(
   bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(scale_a, scale_b)),
-     sigma ~ poly(synthetic_r, degree = 3)), data = manifest_scores, 
+     sigma ~ s(synthetic_r)), data = manifest_scores, 
   file = "ignore/m_synth_rr_r_scales_lm8")
 
 sd_synth <- sd(m_lmsynth_r_scales$data$synthetic_r)
@@ -1122,20 +1168,47 @@ manifest_scores %>%
 <h3>Robustness checks</h3>
 </summary>
 
-How does number of items across the two scales relate to accuracy?
+#### How does number of items across the two scales relate to accuracy?
 
 ```{r}
-by_item_number <- manifest_scores %>%
+by_item_number <- manifest_scores_all %>%
   mutate(items = number_of_items.x + number_of_items.y) %>%
   group_by(items) %>%
   filter(n() > 10) %>% 
-  summarise(broom::tidy(cor.test(empirical_r, synthetic_r)), pairwise_n = n()) 
+  summarise(broom::tidy(cor.test(empirical_r, synthetic_r)), pt_cor = cor(empirical_r, pt_synthetic_r), pairwise_n = n()) 
 
 by_item_number %>% 
   ggplot(aes(items, estimate, ymin = conf.low, ymax = conf.high)) + 
   geom_pointrange() +
   scale_y_continuous("Manifest accuracy (with 95% confidence interval)") +
   xlab("Number of items summed across scales")
+```
+
+##### Accuracy including 2-item scales
+
+```{r}
+r_2item <- broom::tidy(cor.test(manifest_scores_all$empirical_r, manifest_scores_all$synthetic_r))
+pt_r_2item <- broom::tidy(cor.test(pt_manifest_scores_all$empirical_r, pt_manifest_scores_all$synthetic_r))
+
+bind_rows(
+  pt_r %>% 
+    mutate(model = "pre-trained", kind = "manifest") %>% 
+    select(model, kind, accuracy = estimate, conf.low, conf.high) %>% 
+    mutate(items = ">= 3"),
+  r %>% 
+    mutate(model = "fine-tuned", kind = "manifest") %>% 
+    select(model, kind, accuracy = estimate, conf.low, conf.high) %>% 
+    mutate(items = ">= 3"),
+  pt_r_2item %>% 
+    mutate(model = "pre-trained", kind = "manifest") %>% 
+    select(model, kind, accuracy = estimate, conf.low, conf.high) %>% 
+    mutate(items = ">= 2"),
+  r_2item %>% 
+    mutate(model = "fine-tuned", kind = "manifest") %>% 
+    select(model, kind, accuracy = estimate, conf.low, conf.high) %>% 
+    mutate(items = ">= 2"),
+  ) %>% 
+  kable(digits = 2, caption = "Accuracy across language models and methods")
 ```
 
 
