@@ -5,18 +5,8 @@ output:
   html_document:
     toc: true
     toc_float: true
+    css: style.css 
 ---
-
-```{css, echo=FALSE}
-summary {
-  display: block;
-  margin-bottom: 2em;
-}
-
-summary h3, summary h4 {
-  display: list-item;
-}
-```
 
 Here, we apply the pre-trained model and our fine-tuned model to data not used for training, a holdout. The holdout sample was collected by Bainbridge et al. 2022.
 
@@ -165,10 +155,15 @@ bind_rows(
 m_synth_r_items
 
 pred <- conditional_effects(m_synth_r_items, method = "predict")
-by_draw %>% mean_hdci(sigma)
-plot(conditional_effects(m_synth_r_items, dpar = "sigma"), plot = F)[[1]] + 
+kable(rmse_items <- by_draw %>% mean_hdci(sigma), caption = "Average prediction error (RMSE)", digits = 2)
+
+plot_prediction_error_items <- plot(conditional_effects(m_synth_r_items, dpar = "sigma"), plot = F)[[1]] + 
   theme_bw() + 
-  ylab("Prediction error (sigma)")
+  xlab("Synthetic inter-item correlation") + 
+  ylab("Prediction error (sigma)") +
+  geom_smooth(stat = "identity", color = "#a48500", fill = "#EDC951")
+
+plot_prediction_error_items
 ```
 
 </details>
@@ -402,20 +397,23 @@ scales <- scales %>%
   rowwise() %>%
   mutate(r_real = list(cors_real[items, items]),
          pt_r_llm = list(pt_cors_llm[items, items]),
-         r_llm = list(cors_llm[items, items])) %>%
+         r_llm = list(cors_llm[items, items]),
+         N_real = holdout_llm %>% 
+           filter(variable_1 %in% items, variable_2 %in% items) %>% 
+           summarise(min_n=min(pairwise_n)) %>% pull(min_n)) %>%
   mutate(reverse_items = list(find_reverse_items_by_first_item(r_real, keyed)),
          r_real_rev = list(reverse_items(r_real, reverse_items)),
          pt_r_llm_rev = list(reverse_items(pt_r_llm, reverse_items)),
          r_llm_rev = list(reverse_items(r_llm, reverse_items))) %>%
   mutate(
-    rel_real = list(psych::alpha(r_real_rev, keys = F, n.obs = N)$feldt),
-    rel_llm = list(psych::alpha(r_llm_rev, keys = F, n.obs = N)$feldt),
-    rel_pt_llm = list(psych::alpha(pt_r_llm_rev, keys = F, n.obs = N)$feldt)) %>%
+    rel_real = list(psych::alpha(r_real_rev, keys = F, n.obs = N_real)$feldt),
+    rel_llm = list(psych::alpha(r_llm_rev, keys = F, n.obs = N_real)$feldt),
+    rel_pt_llm = list(psych::alpha(pt_r_llm_rev, keys = F, n.obs = N_real)$feldt)) %>%
   mutate(empirical_alpha = rel_real$alpha$raw_alpha,
          synthetic_alpha = rel_llm$alpha$raw_alpha,
          pt_synthetic_alpha = rel_pt_llm$alpha$raw_alpha) %>%
   mutate(
-    empirical_alpha_se = mean(diff(unlist(psychometric::alpha.CI(empirical_alpha, k = number_of_items, N = N, level = 0.95))))
+    empirical_alpha_se = mean(diff(unlist(psychometric::alpha.CI(empirical_alpha, k = number_of_items, N = N, level = 0.95)))/1.96)
   )
 
 scales <- scales %>% filter(empirical_alpha > 0)
@@ -495,14 +493,15 @@ bind_rows(
 m_lmsynth_rel_scales
 
 pred <- conditional_effects(m_lmsynth_rel_scales, method = "predict")
-by_draw %>% 
-  filter(!is.nan(sigma)) %>% mean_hdci(sigma)
+kable(rmse_alpha <- by_draw %>% mean_hdci(sigma), caption = "Average prediction error (RMSE)", digits = 2)
 
-plot(conditional_effects(m_lmsynth_rel_scales, dpar = "sigma"), plot = F)[[1]] + 
+plot_prediction_error_alpha <- plot(conditional_effects(m_lmsynth_rel_scales, dpar = "sigma"), plot = F)[[1]] + 
   theme_bw() + 
-  scale_x_continuous(limits = c(0,1))+
-  scale_y_continuous(limits = c(0,0.13)) +
-  ylab("Prediction error (sigma)")
+  geom_smooth(stat = "identity", color = "#a48500", fill = "#EDC951") + 
+  xlab("Synthetic Cronbach's alpha") + 
+  ylab("Prediction error (sigma)") +
+  coord_cartesian(xlim = c(-1, 1), ylim = c(0, 0.35))
+plot_prediction_error_alpha
 ```
 
 </details>
@@ -714,12 +713,16 @@ bind_rows(
 
 ```{r}
 m_lmsynth_r_scales
-by_draw %>% mean_hdci(sigma)
+kable(rmse_scales <- by_draw %>% mean_hdci(sigma), caption = "Average prediction error (RMSE)", digits = 2)
+
 
 pred <- conditional_effects(m_lmsynth_r_scales, method = "predict")
-plot(conditional_effects(m_lmsynth_r_scales, dpar = "sigma"), plot = F)[[1]] + 
+plot_prediction_error_scales <- plot(conditional_effects(m_lmsynth_r_scales, dpar = "sigma"), plot = F)[[1]] + 
   theme_bw() + 
+  geom_smooth(stat = "identity", color = "#a48500", fill = "#EDC951") + 
+  xlab("Synthetic inter-scale correlation") + 
   ylab("Prediction error (sigma)")
+plot_prediction_error_scales
 ```
 
 
@@ -890,17 +893,14 @@ plot_scales2 <- plot_scales +
   annotate("segment", x = -.15, y = -.7, xend = -.34, yend = -.63, color = "#00A0B0", alpha = 0.7)
 
 
-(pt_plot_items2+
-    pt_plot_rels2 + ggtitle("") +
+(pt_plot_items2  + ggtitle("Pre-trained model before domain adaptation and fine-tuning")+
+    pt_plot_rels2 +
     pt_plot_scales2) /
 
 
-(plot_items2 +
-    plot_rels2 + ggtitle("SurveyBot 3000")  +
-    plot_scales2) +
-  plot_annotation(
-  title = 'Pre-trained model before domain adaptation and fine-tuning'
-)
+(plot_items2 + ggtitle("SurveyBot 3000") +
+    plot_rels2  +
+    plot_scales2)
 
 ggsave("ignore/Figure_pilot.pdf", width = 8.3, height = 6, device = grDevices::cairo_pdf)
 ggsave("ignore/Figure_pilot.png", width = 8.3, height = 6)
@@ -909,4 +909,26 @@ ggsave("ignore/Figure_pilot.png", width = 8.3, height = 6)
 
 # ggsave("ignore/Figure_pilot.svg", width = 8.3, height = 5.5, device = svglite::svglite)
 ```
+
+### Prediction error plots
+```{r fig.width = 8.3, fig.height = 3}
+library(patchwork)
+
+(plot_prediction_error_items + 
+    coord_cartesian(xlim = c(-1, 1), ylim = c(0, 0.4)) +
+    annotate("text", size = 3, x = -1, y = 0.4, vjust = 0, hjust = 0, label = with(rmse_items, { sprintf("RMSE = %.2f [%.2f;%.2f]", sigma, .lower, .upper) })) +
+    
+    plot_prediction_error_alpha + 
+    coord_cartesian(xlim = c(-1, 1), ylim = c(0, 0.4))  +
+    annotate("text", size = 3, x = -1, y = 0.4, vjust = 0, hjust = 0, label = with(rmse_alpha, { sprintf("RMSE = %.2f [%.2f;%.2f]", sigma, .lower, .upper) })) +
+    
+    plot_prediction_error_scales + 
+    coord_cartesian(xlim = c(-1, 1), ylim = c(0, 0.4)) +
+    annotate("text", size = 3, x = -1, y = 0.4, vjust = 0, hjust = 0, label = with(rmse_scales, { sprintf("RMSE = %.2f [%.2f;%.2f]", sigma, .lower, .upper) }))
+)
+
+ggsave("ignore/Figure_prediction_error_rr.pdf", width = 8.3, height = 3, device = grDevices::cairo_pdf)
+ggsave("ignore/Figure_prediction_error_rr.png", width = 8.3, height = 3)
+```
+
 
