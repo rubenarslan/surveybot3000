@@ -43,10 +43,49 @@ rr_human_data_with_inclusion_criteria <- rr_human_data_with_inclusion_criteria %
 rr_human_data_with_inclusion_criteria <- rr_human_data_with_inclusion_criteria %>% 
   full_join(rr_human_data_with_reversed_items)
 rr_human_data_included <- rr_human_data_with_inclusion_criteria %>% filter(included) %>% 
-  select(-starts_with("BH"), -starts_with("SD"), -starts_with("WS"), -starts_with("BFI"),
+  select(-starts_with("BH"), -starts_with("WS"), -starts_with("BFI"),
          -QUESTNNR, -MODE, -one_of(reversed_items), -IFI_01, -ACH_01, -ACH_02, 
          -IFI_02, -FRI_02, -starts_with("MS"), -matches("^OC[0-9]"), -starts_with("PR"),
          -starts_with("RG"), -starts_with("ZY"))
+
+rr_human_data_included <- rr_human_data_included %>% mutate(
+  Age = as.numeric(Age)) %>% 
+  rename(sex = gender,
+         gender = SD13,
+         Age_prolific = Age,
+         age = SD02_01,
+         race = SD03,
+         hispanic = SD04,
+         education = SD08,
+         occupation = SD10) %>% 
+  mutate(
+    non_hispanic_white = if_else(race == "White" & hispanic == "No, not of Hispanic, Latino, or Spanish origin", 1, 0)
+  ) %>% 
+  select(sex, gender, age, race, hispanic, education, occupation, starts_with("SD"), everything())
+
+table(rr_human_data_included$sex)
+round(prop.table(table(rr_human_data_included$sex)),2)
+table(rr_human_data_included$gender)
+
+options(digits = 2)
+table(rr_human_data_included$occupation == "N/A: Unemployed")
+prop.table(table(rr_human_data_included$occupation == "N/A: Unemployed"))
+rr_human_data_included %>% summarise(
+  nh_white = sum(non_hispanic_white),
+  nh_white_pc = sum(non_hispanic_white)/n(),
+  hispanic = sum(hispanic != "No, not of Hispanic, Latino, or Spanish origin"),
+  hispanic_pc = sum(hispanic)/n(),
+  black = sum(race == "Black/African American"),
+  black_pc = sum(black)/n(),
+)
+
+table(rr_human_data_included$education)
+round(prop.table(table(rr_human_data_included$education))*100)
+table(rr_human_data_included$SD07)
+
+rr_human_data_included %>% group_by(education) %>% 
+  summarise(n())
+# table(str_replace_all(str_to_lower(str_trim(rr_human_data_included$SD13_02)), "-", ""))
 ```
 
 

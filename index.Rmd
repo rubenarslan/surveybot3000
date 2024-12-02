@@ -305,7 +305,19 @@ holdout_llm %>%
   knitr::kable()
 ```
 
-
+#### Averages
+```{r}
+holdout_llm %>% summarise(
+  mean(synthetic_r),
+  mean(empirical_r),
+  mean(abs(synthetic_r)),
+  mean(abs(empirical_r)),
+  prop_negative = sum(empirical_r < 0)/n(),
+  prop_pos = sum(empirical_r > 0)/n(),
+  `prop_below_-.10` = sum(empirical_r < -0.1)/n(),
+  `prop_above_.10` = sum(empirical_r > 0.1)/n(),
+) %>% kable(digits = 2, caption = "Average correlations")
+```
 
 Is the accuracy lower for the pre-trained model?
 
@@ -815,6 +827,16 @@ manifest_scores %>%
   filter(number_of_items.x >= 10, number_of_items.y >= 10) %>%
   summarise(cor = cor(empirical_r, synthetic_r), n())
 ```
+
+
+#### Averages
+```{r}
+real_scales %>% ungroup() %>% 
+  filter(number_of_items >= 3) %>% 
+  summarise(median(number_of_items),
+            mean(number_of_items))
+```
+
 
 
 Is the accuracy lower for the pre-trained model?

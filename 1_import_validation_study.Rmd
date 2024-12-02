@@ -39,6 +39,12 @@ rr_validation_mapping_data = arrow::read_feather(
 
 items <- rio::import("https://docs.google.com/spreadsheets/d/16QcRLP5BUn1Cmtr0e_XRdjr1Wg-EHSMSGmgZO1M3tNM/edit?gid=0#gid=0", which = 2)
 
+# compare <- rr_validation_mapping_data %>% full_join(items %>% filter(in_survey) %>% select(id, scale, subscale, item), by = c("variable" = "id")) %>% mutate(subscale = if_else(subscale == "#N/A", NA_character_, subscale))
+# compare %>% filter(item_text != item) %>% View()
+# compare %>% filter((scale0 != scale | scale1 != subscale)) %>% View()
+# compare %>% filter((scale0 != scale | scale1 != subscale) & !(scale1 == scale & scale0 == subscale)) %>% View()
+# rr_validation_mapping_data %>% anti_join(items, by = c("scale0" = "scale", "scale1" = "subscale")) %>% View
+
 scales <- rr_validation_mapping_data %>% 
   select(-scale0, -scale1) %>% 
   left_join(items %>% 
