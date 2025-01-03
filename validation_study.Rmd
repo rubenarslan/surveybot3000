@@ -182,7 +182,7 @@ bind_rows(
     mutate(model = "fine-tuned", kind = "latent outcome (Bayesian EIV)") %>% 
     select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper)
   ) %>% 
-  kable(digits = 2, caption = "Accuracy across language models and methods")
+  kable(digits = 2, caption = str_c("Accuracy for k=",nrow(rr_validation_llm)," item pairs (",n_distinct(c(rr_validation_llm$variable_1, rr_validation_llm$variable_1))," items) across language models and methods"))
 ```
 
 
@@ -291,40 +291,89 @@ rr_validation_llm_domain <- rr_validation_llm %>%
   left_join(instruments %>% select(InstrumentA = Measure, DomainA = Domain), by = "InstrumentA") %>% 
   left_join(instruments %>% select(InstrumentB = Measure, DomainB = Domain), by = "InstrumentB") 
 
-rr_validation_llm_domain %>% 
+accuracy_within_domains <- rr_validation_llm_domain %>% 
   filter(DomainA == DomainB) %>% 
   group_by(DomainA) %>% 
   summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), pt_cor = cor(pt_synthetic_r, empirical_r), sd_emp_r = sd(empirical_r), n = n()) %>% 
-  select(instrument = DomainA, r = estimate, conf.low, conf.high, pt_cor, n, sd_emp_r) %>% 
-  arrange(r) %>% 
+  select(domain = DomainA, r = estimate, conf.low, conf.high, pt_cor, n, sd_emp_r) %>% 
+  arrange(r)
+
+accuracy_within_domains %>% 
   kable(digits = 2, caption = "Accuracy by domain when both items are from the same domain")
 ```
 
 ##### Items from one domain correlated with items in other domain
 ```{r}
-bind_rows(rr_validation_llm_domain %>% 
+accuracy_between_domains <- bind_rows(rr_validation_llm_domain %>% 
   filter(DomainA != DomainB),
   rr_validation_llm_domain %>% 
   filter(DomainA != DomainB) %>% 
   rename(DomainA = DomainB, DomainB = DomainA)) %>% 
   group_by(DomainA) %>% 
   summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), pt_cor = cor(pt_synthetic_r, empirical_r), sd_emp_r = sd(empirical_r), n = n()) %>% 
-  select(instrument = DomainA, r = estimate, conf.low, conf.high, pt_cor, n, sd_emp_r) %>% 
-  arrange(r) %>% 
+  select(domain = DomainA, r = estimate, conf.low, conf.high, pt_cor, n, sd_emp_r) %>% 
+  arrange(r)
+accuracy_between_domains %>% 
   kable(digits = 2, caption = "Accuracy by domain when items are from different domains")
 ```
+
+```{r}
+bind_rows(
+within = accuracy_within_domains,
+outside = accuracy_between_domains, .id = "kind") %>% 
+ggplot(aes(x = domain, r, ymin = conf.low, ymax = conf.high, color = kind)) +
+  geom_point(aes(y = pt_cor, group = kind), color = "gray", position = position_dodge(width = 0.3)) +
+  geom_linerange(aes(ymin = pt_cor, ymax = r, group = kind), color = "gray", position = position_dodge(width = 0.3)) +
+  geom_pointrange(position = position_dodge(width = 0.3)) + 
+  scale_color_viridis_d(end = 0.7, option = "A", guide = F) +
+  scale_y_continuous("Manifest accuracy", limits = c(0, 1)) +
+  geom_text(aes(label = sprintf("%.2f", r)), vjust = -1, position = position_dodge(width = 0.3)) +
+  coord_flip()
+ggsave("Figure_rr_domain.png", width = 4, height = 5)
+```
+
+
 
 #### Accuracy by instrument
 
 ```{r}
-rr_validation_llm %>% 
+accuracy_between_instruments <- bind_rows(rr_validation_llm_domain %>% 
+  filter(InstrumentA != InstrumentB),
+  rr_validation_llm_domain %>% 
+  filter(InstrumentA != InstrumentB) %>% 
+  rename(InstrumentA = InstrumentB, InstrumentB = InstrumentA)) %>% 
+  group_by(InstrumentA) %>% 
+  summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), pt_cor = cor(pt_synthetic_r, empirical_r), sd_emp_r = sd(empirical_r), n = n()) %>% 
+  select(instrument = InstrumentA, r = estimate, conf.low, conf.high, pt_cor, n, sd_emp_r) %>% 
+  arrange(r) %>% 
+  mutate(instrument = fct_inorder(instrument))
+
+accuracy_between_instruments %>% 
+  kable(digits = 2, caption = "Accuracy by instrument (for items belonging to other instruments)")
+
+accuracy_within_instruments <- rr_validation_llm %>% 
   filter(InstrumentA == InstrumentB) %>% 
   left_join(items_by_scale %>% select(variable_1 = variable, keyed = keyed) %>% distinct()) %>% 
   group_by(InstrumentA) %>% 
   summarise(broom::tidy(cor.test(synthetic_r, empirical_r)), pt_cor = cor(pt_synthetic_r, empirical_r), sd_emp_r = sd(empirical_r), n = n(), reverse_item_percentage = sum(keyed == -1, na.rm = TRUE)/n()) %>% 
   select(instrument = InstrumentA, r = estimate, conf.low, conf.high, pt_cor, n, sd_emp_r, reverse_item_percentage) %>% 
   arrange(r) %>% 
+  mutate(instrument = factor(instrument, levels = levels(accuracy_between_instruments$instrument)))
+  
+accuracy_within_instruments %>% 
   kable(digits = 2, caption = "Accuracy by instrument (within items belonging to the same instrument)")
+
+bind_rows(
+within = accuracy_within_instruments,
+outside = accuracy_between_instruments, .id = "kind") %>% 
+ggplot(aes(x = instrument, r, ymin = conf.low, ymax = conf.high, color = kind)) +
+  geom_point(aes(y = pt_cor, group = kind), color = "gray", position = position_dodge(width = 0.3)) +
+  geom_linerange(aes(ymin = pt_cor, ymax = r, group = kind), color = "gray", position = position_dodge(width = 0.3)) +
+  geom_pointrange(position = position_dodge(width = 0.3)) + 
+  scale_color_viridis_d(end = 0.7, option = "A", guide = F) +
+  scale_y_continuous("Manifest accuracy") +
+  geom_text(aes(label = sprintf("%.2f", r)), vjust = -1, position = position_dodge(width = 0.3)) +
+  coord_flip()
 ```
 
 #### Accuracy by item properties
@@ -426,21 +475,35 @@ rr_validation_llm %>% summarise(
   mean(synthetic_r),
   mean(empirical_r),
   mean(abs(synthetic_r)),
-  mean(abs(empirical_r))
+  mean(abs(empirical_r)),
+  prop_negative = sum(empirical_r < 0)/n(),
+  prop_pos = sum(empirical_r > 0)/n(),
+  `prop_below_-.10` = sum(empirical_r < -0.1)/n(),
+  `prop_above_.10` = sum(empirical_r > 0.1)/n(),
 ) %>% kable(digits = 2, caption = "Average correlations")
 ```
 
-#### Accuracy for absolute correlations
+#### By sign & accuracy for absolute correlations
 
 ```{r}
 cor_abs <- broom::tidy(cor.test(abs(rr_validation_llm$synthetic_r), abs(rr_validation_llm$empirical_r)))
+cor_neg <- rr_validation_llm %>% filter(empirical_r < 0) %>% 
+ { broom::tidy(cor.test(.$synthetic_r, .$empirical_r)) }
+cor_pos <- rr_validation_llm %>% filter(empirical_r > 0) %>% 
+ { broom::tidy(cor.test(.$synthetic_r, .$empirical_r)) }
+
+cor_switch <- rr_validation_llm %>% mutate(synthetic_r = if_else(sign(synthetic_r) == sign(empirical_r), synthetic_r,
+                                                                 -1*synthetic_r)) %>% 
+ { broom::tidy(cor.test(.$synthetic_r, .$empirical_r)) }
 
 ggplot(rr_validation_llm, aes(abs(synthetic_r), abs(empirical_r), color = factor(sign(empirical_r)))) + 
-  annotate("text", size = 3, x = 0, y = 0.98, vjust = 0, hjust = 0, label = with(cor_abs, { sprintf("accuracy = %.2f [%.2f;%.2f]", estimate, conf.low, conf.high) })) +
+  annotate("text", size = 3, x = 0, y = 0.98, vjust = 0, hjust = 0, label = with(cor_abs, { sprintf("accuracy absolute r = %.2f [%.2f;%.2f]", estimate, conf.low, conf.high) }), color = 'black') +
+  annotate("text", size = 3, x = 0, y = 0.9, vjust = 0, hjust = 0, label = with(cor_neg, { sprintf("accuracy negative r = %.2f [%.2f;%.2f]", estimate, conf.low, conf.high) }), color = "#36A") +
+  annotate("text", size = 3, x = 0, y = 0.82, vjust = 0, hjust = 0, label = with(cor_pos, { sprintf("accuracy positive r = %.2f [%.2f;%.2f]", estimate, conf.low, conf.high) }), color = "#00A0B0") +
   geom_abline(linetype = "dashed") +
   geom_point( alpha = 0.1, size = 1) +
   geom_smooth(method = "lm") +
-  scale_color_manual("Sign of emp. r", values = c("1" = "#00A0B0", "-1" = "black")) +
+  scale_color_manual("Sign of emp. r", values = c("1" = "#00A0B0", "-1" = "#36A")) +
   xlab("Absolute synthetic inter-item correlation") + 
   ylab("Absolute empirical inter-item correlation") +
   theme_bw() +
@@ -500,7 +563,7 @@ r_main <- rr_human_data_all %>%
 	         !even_odd_outlier & !psychsyn_outlier & !psychant_outlier & !mahal_flagged) %>% 
   filter(included) %>% 
   manifest_and_latent_r() %>% 
-  mutate(`exclusion criteria` = "Adapted: <br>- item response time < 2s<br>- odd-even r <= .45<br>- psychometric synonym r < .22<br>- psychometric antonym r > -0.03<br>- Mahalanobis distance set for 99% specificity")
+  mutate(`exclusion criteria` = "Adapted: <br>- exclude non-serious respondents<br>- item response time < 2s<br>- odd-even r <= .45<br>- psychometric synonym r < .22<br>- psychometric antonym r > -0.03<br>- Mahalanobis distance set for 99% specificity")
 
 r_goldammer_1 <- rr_human_data_all %>% 
 	mutate(time_per_item_outlier = time_per_item < 2,
@@ -547,6 +610,21 @@ r_strict_reading_of_prereg <- rr_human_data_all %>%
   mutate(`exclusion criteria` = "Strict preregistered criteria: <br>- odd-even r < mean + 0.2 * SD<br>- psychometric synonym r < .60<br>- psychometric antonym r > -0.40<br>- Mahalanobis distance < mean + 0.5 * SD<br>-Not US citizen")
 
 
+r_main_first_450 <- rr_human_data_all %>% 
+	mutate(mahal_outlier = careless::mahad(rr_human_data_all %>% select(starts_with(main_qs)), plot = FALSE, flag = TRUE, confidence = .99)$flagged) %>% 
+  arrange(`Completed at`) %>% 
+  filter(row_number () <= 450) %>% 
+	mutate(time_per_item_outlier = time_per_item < 2,
+				 even_odd_outlier = even_odd >= -.45,
+				 psychsyn_outlier = psychsyn < 0.22,
+				 psychant_outlier = psychant > -0.03) %>% 
+	mutate(included = !not_serious & !time_per_item_outlier & 
+	         !even_odd_outlier & !psychsyn_outlier & !psychant_outlier & !mahal_flagged) %>% 
+  filter(included) %>% 
+  manifest_and_latent_r() %>% 
+  mutate(`exclusion criteria` = "Adapted + Prereg N: <br>- the adapted criteria<br>- Only the first 450 participants, our preregistered sample size.")
+
+
 r_main_us <- rr_human_data_all %>% 
 	mutate(time_per_item_outlier = time_per_item < 2,
 				 even_odd_outlier = even_odd >= -.45,
@@ -591,7 +669,8 @@ The manifest accuracy is expected to decrease slightly with sample size because 
 ```{r}
 exclusion_criteria <- bind_rows(
   r_all, r_main, r_strict_reading_of_prereg, r_adapted_reading_of_prereg, 
-  r_goldammer_1, r_goldammer_2, r_goldammer_3, r_main_us, r_main_approvals
+  r_goldammer_1, r_goldammer_2, r_goldammer_3, r_main_us, r_main_approvals,
+  r_main_first_450
   )
 exclusion_criteria %>% 
     select(`exclusion criteria`, model, kind, accuracy, conf.low, conf.high, `max N`) %>% 
@@ -1068,7 +1147,7 @@ bind_rows(
     mutate(model = "fine-tuned", kind = "latent outcome (Bayesian EIV)") %>% 
     select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper)
   ) %>% 
-  kable(digits = 2, caption = "Accuracy across language models and methods")
+  kable(digits = 2, caption = str_c("Accuracy for k=",nrow(manifest_scores)," scale pairs (",n_distinct(c(manifest_scores$scale_a, manifest_scores$scale_b))," scales) across language models and methods"))
 ```
 
 
@@ -1183,6 +1262,15 @@ by_item_number %>%
   scale_y_continuous("Manifest accuracy (with 95% confidence interval)") +
   xlab("Number of items summed across scales")
 ```
+
+##### Averages
+```{r}
+real_scales %>% ungroup() %>% 
+  filter(number_of_items >= 3) %>% 
+  summarise(median(number_of_items),
+            mean(number_of_items))
+```
+
 
 ##### Accuracy including 2-item scales
 

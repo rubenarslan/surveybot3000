@@ -83,6 +83,8 @@ table(rr_human_data_included$education)
 round(prop.table(table(rr_human_data_included$education))*100)
 table(rr_human_data_included$SD07)
 
+table(rr_human_data_included$Nationality != "United States")
+
 rr_human_data_included %>% group_by(education) %>% 
   summarise(n())
 # table(str_replace_all(str_to_lower(str_trim(rr_human_data_included$SD13_02)), "-", ""))
