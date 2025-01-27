@@ -284,6 +284,49 @@ rio::export(item_pair_table, "item_pair_table_rr.xlsx")
 <h3>Robustness checks</h3>
 </summary>
 
+
+#### Comparing spline and polynomial models for heteroscedasticity
+```{r}
+# For item correlations
+m_synth_r_items_poly <- brm(
+  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(variable_1, variable_2)),
+     sigma ~ poly(synthetic_r, degree = 3)), data = rr_validation_llm, 
+  file = "ignore/m_synth_rr_r_items_lm_poly")
+
+newdata <- m_synth_r_items_poly$data %>% select(empirical_r, synthetic_r, empirical_r_se)
+epreds <- epred_draws(newdata = newdata, obj = m_synth_r_items_poly, re_formula = NA)
+preds <- predicted_draws(newdata = newdata, obj = m_synth_r_items_poly, re_formula = NA)
+epred_preds <- epreds %>% left_join(preds)
+by_draw <- epred_preds %>% group_by(.draw) %>% 
+  summarise(.epred = var(.epred),
+            .prediction = var(.prediction),
+            sigma = sqrt(.prediction - .epred),
+            latent_r = sqrt(.epred/.prediction))
+
+accuracy_bayes_items_poly <- by_draw %>% mean_hdci(latent_r)
+
+bind_rows(
+  accuracy_bayes_items %>% 
+    mutate(model = "spline", kind = "latent outcome (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper),
+  accuracy_bayes_items_poly %>% 
+    mutate(model = "polynomial", kind = "latent outcome (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper)
+) %>% 
+  knitr::kable(digits = 2, caption = "Comparing spline and polynomial models for item correlations")
+```
+
+```{r}
+plot_prediction_error_items_poly <- plot(conditional_effects(m_synth_r_items_poly, dpar = "sigma"), plot = F)[[1]] + 
+  theme_bw() + 
+  xlab("Synthetic inter-item correlation") + 
+  ylab("Prediction error (sigma)") +
+  geom_smooth(stat = "identity", color = "#a48500", fill = "#EDC951")
+
+plot_prediction_error_items_poly
+```
+
+
 #### Accuracy by subject matter
 ##### Both items from same subject matter/domain
 ```{r}
@@ -1330,6 +1373,47 @@ manifest_scores %>%
 <summary>
 <h3>Robustness checks</h3>
 </summary>
+
+#### Comparing spline and polynomial models for heteroscedasticity
+```{r}
+# For scale correlations
+m_lmsynth_r_scales_poly <- brm(
+  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(scale_a, scale_b)),
+     sigma ~ poly(synthetic_r, degree = 3)), data = manifest_scores, 
+  file = "ignore/m_synth_rr_r_scales_lm_poly")
+
+newdata <- m_lmsynth_r_scales_poly$data %>% select(empirical_r, synthetic_r, empirical_r_se)
+epreds <- epred_draws(newdata = newdata, obj = m_lmsynth_r_scales_poly, re_formula = NA)
+preds <- predicted_draws(newdata = newdata, obj = m_lmsynth_r_scales_poly, re_formula = NA)
+epred_preds <- epreds %>% left_join(preds)
+by_draw <- epred_preds %>% group_by(.draw) %>% 
+  summarise(.epred = var(.epred),
+            .prediction = var(.prediction),
+            sigma = sqrt(.prediction - .epred),
+            latent_r = sqrt(.epred/.prediction))
+
+accuracy_bayes_scales_poly <- by_draw %>% mean_hdci(latent_r)
+
+bind_rows(
+  accuracy_bayes_scales %>% 
+    mutate(model = "spline", kind = "latent outcome (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper),
+  accuracy_bayes_scales_poly %>% 
+    mutate(model = "polynomial", kind = "latent outcome (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper)
+) %>% 
+  knitr::kable(digits = 2, caption = "Comparing spline and polynomial models for scale correlations")
+```
+
+```{r}
+plot_prediction_error_scales_poly <- plot(conditional_effects(m_lmsynth_r_scales_poly, dpar = "sigma"), plot = F)[[1]] + 
+  theme_bw() + 
+  geom_smooth(stat = "identity", color = "#a48500", fill = "#EDC951") + 
+  xlab("Synthetic inter-scale correlation") + 
+  ylab("Prediction error (sigma)")
+plot_prediction_error_scales_poly
+```
+
 
 #### How does number of items across the two scales relate to accuracy?
 

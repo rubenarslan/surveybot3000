@@ -8,3 +8,4 @@ ignore*
 docs/data*
 data/*
 data_synth*
+.lintr

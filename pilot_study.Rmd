@@ -106,7 +106,7 @@ pt_fit <- sem(model, data = pt_holdout_llm)
 
 m_synth_r_items <- brm(
   bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(variable_1, variable_2)),
-     sigma ~ poly(synthetic_r, degree = 3)), data = holdout_llm, 
+     sigma ~ s(synthetic_r)), data = holdout_llm, 
   file = "ignore/m_synth_r_items_lm")
 
 sd_synth <- sd(m_synth_r_items$data$synthetic_r)
@@ -119,10 +119,10 @@ by_draw <- epred_preds %>% group_by(.draw) %>%
   summarise(.epred = var(.epred),
             .prediction = var(.prediction),
             sigma = sqrt(.prediction - .epred),
-            semi_latent_r = sqrt(.epred/.prediction))
+            latent_r = sqrt(.epred/.prediction))
 rm(epred_preds)
 
-accuracy_bayes_items <- by_draw %>% mean_hdci(semi_latent_r)
+accuracy_bayes_items <- by_draw %>% mean_hdci(latent_r)
 
 bind_rows(
   pt_r %>% 
@@ -130,7 +130,7 @@ bind_rows(
     select(model, kind, accuracy = estimate, conf.low, conf.high),
   standardizedsolution(pt_fit) %>% 
     filter(lhs == "PearsonLatent", rhs ==  "synthetic_r") %>% 
-    mutate(model = "pre-trained", kind = "semi-latent (SEM)") %>% 
+    mutate(model = "pre-trained", kind = "latent outcome (SEM)") %>% 
     select(model, kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
   r %>% 
@@ -138,13 +138,13 @@ bind_rows(
     select(model, kind, accuracy = estimate, conf.low, conf.high),
   standardizedsolution(fit) %>% 
     filter(lhs == "PearsonLatent", rhs ==  "synthetic_r") %>% 
-    mutate(model = "fine-tuned", kind = "semi-latent (SEM)") %>% 
+    mutate(model = "fine-tuned", kind = "latent outcome (SEM)") %>% 
     select(model, kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
   accuracy_bayes_items %>% 
-    mutate(model = "fine-tuned", kind = "semi-latent (Bayesian EIV)") %>% 
-    select(model, kind, accuracy = semi_latent_r, conf.low = .lower, conf.high = .upper)
-  ) %>% 
+    mutate(model = "fine-tuned", kind = "latent outcome (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper)
+) %>% 
   knitr::kable(digits = 2)
 ```
 
@@ -236,6 +236,36 @@ rio::export(item_pair_table, "item_pair_table.xlsx")
 
 <details><summary><h3>Robustness checks</h3></summary>
 
+
+#### Comparing spline and polynomial models for heteroscedasticity
+```{r}
+m_synth_r_items_poly <- brm(
+  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(variable_1, variable_2)),
+     sigma ~ poly(synthetic_r, degree = 3)), data = holdout_llm, 
+  file = "ignore/m_synth_r_items_lm_poly")
+
+newdata <- m_synth_r_items_poly$data %>% select(empirical_r, synthetic_r, empirical_r_se)
+epreds <- epred_draws(newdata = newdata, obj = m_synth_r_items_poly, re_formula = NA)
+preds <- predicted_draws(newdata = newdata, obj = m_synth_r_items_poly, re_formula = NA)
+epred_preds <- epreds %>% left_join(preds)
+by_draw <- epred_preds %>% group_by(.draw) %>% 
+  summarise(.epred = var(.epred),
+            .prediction = var(.prediction),
+            sigma = sqrt(.prediction - .epred),
+            latent_r = sqrt(.epred/.prediction))
+
+accuracy_bayes_items_poly <- by_draw %>% mean_hdci(latent_r)
+
+bind_rows(
+  accuracy_bayes_items %>% 
+    mutate(model = "spline", kind = "latent outcome (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper),
+  accuracy_bayes_items_poly %>% 
+    mutate(model = "polynomial", kind = "latent outcome (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper)
+) %>% 
+  knitr::kable(digits = 2, caption = "Comparing spline and polynomial models for item correlations")
+```
 
 Is the accuracy lower within/across scales and instruments?
 
@@ -377,7 +407,7 @@ pt_fit <- sem(model, data = scales %>%
 
 m_lmsynth_rel_scales <- brm(
   bf(empirical_alpha | mi(empirical_alpha_se) ~ synthetic_alpha,
-     sigma ~ poly(synthetic_alpha, degree = 3)), data = scales, 
+     sigma ~ s(synthetic_alpha)), data = scales, 
   file = "ignore/m_synth_rel_lm")
 
 newdata <- m_lmsynth_rel_scales$data %>% select(empirical_alpha, synthetic_alpha, empirical_alpha_se)
@@ -388,9 +418,9 @@ by_draw <- epred_preds %>% group_by(.draw) %>%
   summarise(.epred = var(.epred),
             .prediction = var(.prediction),
             sigma = sqrt(.prediction - .epred),
-            semi_latent_r = sqrt(.epred/.prediction))
+            latent_r = sqrt(.epred/.prediction))
 
-accuracy_bayes_rels <- by_draw %>% mean_hdci(semi_latent_r)
+accuracy_bayes_rels <- by_draw %>% mean_hdci(latent_r)
 
 bind_rows(
   pt_r %>% 
@@ -398,7 +428,7 @@ bind_rows(
     select(model, kind, accuracy = estimate, conf.low, conf.high),
   standardizedsolution(pt_fit) %>% 
     filter(lhs == "latent_real_rel", rhs ==  "synthetic_alpha") %>% 
-    mutate(model = "pre-trained", kind = "semi-latent (SEM)") %>% 
+    mutate(model = "pre-trained", kind = "latent outcome (SEM)") %>% 
     select(model, kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
   r %>% 
@@ -406,12 +436,12 @@ bind_rows(
     select(model, kind, accuracy = estimate, conf.low, conf.high),
   standardizedsolution(fit) %>% 
     filter(lhs == "latent_real_rel", rhs ==  "synthetic_alpha") %>% 
-    mutate(model = "fine-tuned", kind = "semi-latent (SEM)") %>% 
+    mutate(model = "fine-tuned", kind = "latent outcome (SEM)") %>% 
     select(model, kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
   accuracy_bayes_rels %>% 
-    mutate(model = "fine-tuned", kind = "semi-latent (Bayesian EIV)") %>% 
-    select(model, kind, accuracy = semi_latent_r, conf.low = .lower, conf.high = .upper)
+    mutate(model = "fine-tuned", kind = "latent outcome (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper)
   ) %>% 
   knitr::kable(digits = 2)
 ```
@@ -599,7 +629,43 @@ ggplot(s1_scales, aes(synthetic_alpha, empirical_alpha,
   theme_bw() +
   coord_fixed(xlim = c(-1, 1), ylim = c(-1,1))  -> s1_plot_rels
 s1_plot_rels
+
+
+newdata <- m_lmsynth_rel_scales_s1$data %>% select(empirical_alpha, synthetic_alpha, empirical_alpha_se)
+epreds <- epred_draws(newdata = newdata, obj = m_lmsynth_rel_scales_s1, re_formula = NA)
+preds <- predicted_draws(newdata = newdata, obj = m_lmsynth_rel_scales_s1, re_formula = NA)
+epred_preds <- epreds %>% left_join(preds)
+by_draw <- epred_preds %>% group_by(.draw) %>% 
+  summarise(
+             mae = mean(abs(.epred - .prediction)),
+            .epred = var(.epred),
+            .prediction = var(.prediction),
+            sigma = sqrt(.prediction - .epred),
+            latent_r = sqrt(.epred/.prediction))
+
+accuracy_bayes_rels_poly <- by_draw %>% mean_hdci(latent_r)
+
+s1_plot_rels
 ```
+
+```{r}
+bind_rows(
+  r %>% 
+    mutate(model = "fine-tuned", kind = "manifest") %>% 
+    select(model, kind, accuracy = estimate, conf.low, conf.high),
+  s1_r %>% 
+    mutate(model = "fine-tuned, conditioned on empirical r", kind = "manifest") %>% 
+    select(model, kind, accuracy = estimate, conf.low, conf.high),
+  accuracy_bayes_rels %>% 
+    mutate(model = "fine-tuned", kind = "latent outcome (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper),
+  accuracy_bayes_rels_poly %>% 
+    mutate(model = "fine-tuned, conditioned on empirical r", kind = "latent outcome (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper),
+  ) %>% 
+  knitr::kable(digits = 2, caption = "Accuracy of synthetic alphas when empirical alphas are biased upward through adaptive item reversion and selection on positive alphas")
+```
+
 
 
 #### Number of items as a trivial predictor
@@ -678,7 +744,7 @@ pt_fit <- sem(model, data = pt_manifest_scores)
 
 m_lmsynth_r_scales <- brm(
   bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(scale_a, scale_b)),
-     sigma ~ poly(synthetic_r, degree = 3)), data = manifest_scores, 
+     sigma ~ s(synthetic_r)), data = manifest_scores, 
   file = "ignore/m_synth_r_scales_lm8")
 
 sd_synth <- sd(m_lmsynth_r_scales$data$synthetic_r)
@@ -692,9 +758,9 @@ by_draw <- epred_preds %>% group_by(.draw) %>%
   summarise(.epred = var(.epred),
             .prediction = var(.prediction),
             sigma = sqrt(.prediction - .epred),
-            semi_latent_r = sqrt(.epred/.prediction))
+            latent_r = sqrt(.epred/.prediction))
 
-accuracy_bayes_scales <- by_draw %>% mean_hdci(semi_latent_r)
+accuracy_bayes_scales <- by_draw %>% mean_hdci(latent_r)
 
 bind_rows(
   pt_r %>% 
@@ -702,7 +768,7 @@ bind_rows(
     select(model, kind, accuracy = estimate, conf.low, conf.high),
   standardizedsolution(pt_fit) %>% 
     filter(lhs == "PearsonLatent", rhs ==  "synthetic_r") %>% 
-    mutate(model = "pre-trained", kind = "semi-latent (SEM)") %>% 
+    mutate(model = "pre-trained", kind = "latent outcome (SEM)") %>% 
     select(model, kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
   r %>% 
@@ -710,12 +776,12 @@ bind_rows(
     select(model, kind, accuracy = estimate, conf.low, conf.high),
   standardizedsolution(fit) %>% 
     filter(lhs == "PearsonLatent", rhs ==  "synthetic_r") %>% 
-    mutate(model = "fine-tuned", kind = "semi-latent (SEM)") %>% 
+    mutate(model = "fine-tuned", kind = "latent outcome (SEM)") %>% 
     select(model, kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper),
   accuracy_bayes_scales %>% 
-    mutate(model = "fine-tuned", kind = "semi-latent (Bayesian EIV)") %>% 
-    select(model, kind, accuracy = semi_latent_r, conf.low = .lower, conf.high = .upper)
+    mutate(model = "fine-tuned", kind = "latent outcome (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper)
   ) %>% 
   knitr::kable(digits = 2)
 ```
@@ -807,7 +873,39 @@ manifest_scores %>%
 
 <details><summary><h3>Robustness checks</h3></summary>
 
-How does number of items across the two scales relate to accuracy?
+
+#### Comparing spline and polynomial models for heteroscedasticity
+```{r}
+m_lmsynth_r_scales_poly <- brm(
+  bf(empirical_r | mi(empirical_r_se) ~ synthetic_r + (1|mm(scale_a, scale_b)),
+     sigma ~ poly(synthetic_r, degree = 3)), data = manifest_scores, 
+  file = "ignore/m_synth_r_scales_lm_poly")
+
+newdata <- m_lmsynth_r_scales_poly$data %>% select(empirical_r, synthetic_r, empirical_r_se)
+epreds <- epred_draws(newdata = newdata, obj = m_lmsynth_r_scales_poly, re_formula = NA)
+preds <- predicted_draws(newdata = newdata, obj = m_lmsynth_r_scales_poly, re_formula = NA)
+epred_preds <- epreds %>% left_join(preds)
+by_draw <- epred_preds %>% group_by(.draw) %>% 
+  summarise(.epred = var(.epred),
+            .prediction = var(.prediction),
+            sigma = sqrt(.prediction - .epred),
+            latent_r = sqrt(.epred/.prediction))
+
+accuracy_bayes_scales_poly <- by_draw %>% mean_hdci(latent_r)
+
+bind_rows(
+  accuracy_bayes_scales %>% 
+    mutate(model = "spline", kind = "latent outcome (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper),
+  accuracy_bayes_scales_poly %>% 
+    mutate(model = "polynomial", kind = "latent outcome (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper)
+) %>% 
+  knitr::kable(digits = 2, caption = "Comparing spline and polynomial models for scale correlations")
+```
+
+
+#### How does number of items across the two scales relate to accuracy?
 
 ```{r}
 by_item_number <- manifest_scores %>%
@@ -839,7 +937,7 @@ real_scales %>% ungroup() %>%
 
 
 
-Is the accuracy lower for the pre-trained model?
+#### Is the accuracy lower for the pre-trained model?
 
 ```{r}
 ggplot(pt_manifest_scores, aes(synthetic_r, empirical_r, 
@@ -872,7 +970,7 @@ pt_plot_items2 <- pt_plot_items +
   
 
 plot_items2 <- plot_items +
-  annotate("text", size = 3, x = -1, y = 0.98, vjust = 0, hjust = 0, label = with(accuracy_bayes_items, { sprintf("accuracy = %.2f [%.2f;%.2f]", semi_latent_r, .lower, .upper) })) +
+  annotate("text", size = 3, x = -1, y = 0.98, vjust = 0, hjust = 0, label = with(accuracy_bayes_items, { sprintf("accuracy = %.2f [%.2f;%.2f]", latent_r, .lower, .upper) })) +
   annotate("text", size = 2.5, x = 0.5, y = -0.8, vjust = 1, hjust = 1, label = "r(I fear for the worst,\nI never worry about anything)", color = "#00A0B0") +
   annotate("segment", x = 0, y = -0.78, xend = -0.1104686, yend = -0.3459711, color = "#00A0B0", alpha = 0.7) +
   annotate("text", size = 2.5, x = -.1, y = 0.5, hjust = 1, label = "r(I get angry easily,\nI lose my temper)", color = "#00A0B0") + 
@@ -890,7 +988,7 @@ pt_plot_rels2 <- pt_plot_rels +
   annotate("segment", x = 0.11, y = 0.93, xend = -1.477226, yend = 0.71, color = "#00A0B0", alpha = 0.7)
 
 plot_rels2 <- plot_rels + 
-  annotate("text", size = 3, x = 0, y = .985, vjust = 0, hjust = 0, label = with(accuracy_bayes_rels, { sprintf("accuracy = %.2f [%.2f;%.2f]", semi_latent_r, .lower, .upper) })) +
+  annotate("text", size = 3, x = 0, y = .985, vjust = 0, hjust = 0, label = with(accuracy_bayes_rels, { sprintf("accuracy = %.2f [%.2f;%.2f]", latent_r, .lower, .upper) })) +
   annotate("text", size = 2.5, x = 0.4, y = 0.1, hjust = 0, label = "randomly formed scales", color = "#6A4A3C") +
   annotate("segment", x = 0.395, y = 0.1, xend = 0.39, yend = 0.4864297, color = "#6A4A3C", alpha = 0.7) +
   annotate("segment", x = 0.395, y = 0.1, xend = 0.285, yend = 0.2279919, color = "#6A4A3C", alpha = 0.7) +
@@ -908,7 +1006,7 @@ pt_plot_scales2 <- pt_plot_scales +
 
 
 plot_scales2 <- plot_scales +
-  annotate("text", size = 3, x = -1, y = 0.98, vjust = 0, hjust = 0, label = with(accuracy_bayes_scales, { sprintf("accuracy = %.2f [%.2f;%.2f]", semi_latent_r, .lower, .upper) })) +
+  annotate("text", size = 3, x = -1, y = 0.98, vjust = 0, hjust = 0, label = with(accuracy_bayes_scales, { sprintf("accuracy = %.2f [%.2f;%.2f]", latent_r, .lower, .upper) })) +
   annotate("text", size = 2.5, x = -0.1, y = 0.5, hjust = 1, label = "r(BFI Neuroticism,\nIPIP Neuroticism)", color = "#00A0B0") +
   annotate("segment", x = -.1, y = 0.5, xend = .84, yend = .84, color = "#00A0B0", alpha = 0.7) +
   annotate("text", size = 2.5, x = -.15, y = -0.7, hjust = 0, label = "r(BFI Depression facet,\nLOT Optimism)", color = "#00A0B0") +
