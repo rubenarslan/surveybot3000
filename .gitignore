@@ -4,3 +4,7 @@
 .Ruserdata
 *.rds
 ignore*
+~$*
+docs/data*
+data/*
+data_synth*
