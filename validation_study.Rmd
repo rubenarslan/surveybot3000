@@ -294,8 +294,8 @@ m_synth_r_items_poly <- brm(
   file = "ignore/m_synth_rr_r_items_lm_poly")
 
 newdata <- m_synth_r_items_poly$data %>% select(empirical_r, synthetic_r, empirical_r_se)
-epreds <- epred_draws(newdata = newdata, obj = m_synth_r_items_poly, re_formula = NA)
-preds <- predicted_draws(newdata = newdata, obj = m_synth_r_items_poly, re_formula = NA)
+epreds <- epred_draws(newdata = newdata, obj = m_synth_r_items_poly, re_formula = NA, ndraws = 200)
+preds <- predicted_draws(newdata = newdata, obj = m_synth_r_items_poly, re_formula = NA, ndraws = 200)
 epred_preds <- epreds %>% left_join(preds)
 by_draw <- epred_preds %>% group_by(.draw) %>% 
   summarise(.epred = var(.epred),
@@ -1065,24 +1065,13 @@ s1_scales <- scales %>%
       filter(empirical_alpha > 0)
 
 s1_r <- broom::tidy(cor.test(s1_scales$empirical_alpha, s1_scales$synthetic_alpha))
-s1_pt_r <- broom::tidy(cor.test(s1_scales$empirical_alpha, s1_scales$pt_synthetic_alpha))
-                             
-bind_rows(
-  s1_pt_r %>% 
-    mutate(model = "pre-trained", kind = "manifest") %>% 
-    select(model, kind, accuracy = estimate, conf.low, conf.high),
-  s1_r %>% 
-    mutate(model = "fine-tuned", kind = "manifest") %>% 
-    select(model, kind, accuracy = estimate, conf.low, conf.high),
-  ) %>% 
-  knitr::kable(digits = 2, caption = "Accuracy of synthetic alphas when empirical alphas are biased upward through adaptive item reversion and selection on positive alphas")
 ```
 
 
 ```{r}
 m_lmsynth_rel_scales_s1 <- brm(
   bf(empirical_alpha | mi(empirical_alpha_se) ~ synthetic_alpha,
-     sigma ~ s(synthetic_alpha)), data = s1_scales, 
+     sigma ~ poly(synthetic_alpha, degree = 3)), data = s1_scales, 
   iter = 6000, control = list(adapt_delta = 0.9),
   file = "ignore/m_synth_rr_rel_lm_as_stage_1")
 
@@ -1107,8 +1096,42 @@ ggplot(s1_scales, aes(synthetic_alpha, empirical_alpha,
   ylab("Empirical Cronbach's alpha") +
   theme_bw() +
   coord_fixed(xlim = c(-1, 1), ylim = c(-1,1))  -> s1_plot_rels
+
+newdata <- m_lmsynth_rel_scales_s1$data %>% select(empirical_alpha, synthetic_alpha, empirical_alpha_se)
+epreds <- epred_draws(newdata = newdata, obj = m_lmsynth_rel_scales_s1, re_formula = NA)
+preds <- predicted_draws(newdata = newdata, obj = m_lmsynth_rel_scales_s1, re_formula = NA)
+epred_preds <- epreds %>% left_join(preds)
+by_draw <- epred_preds %>% group_by(.draw) %>% 
+  summarise(
+             mae = mean(abs(.epred - .prediction)),
+            .epred = var(.epred),
+            .prediction = var(.prediction),
+            sigma = sqrt(.prediction - .epred),
+            latent_r = sqrt(.epred/.prediction))
+
+accuracy_bayes_rels_poly <- by_draw %>% mean_hdci(latent_r)
+
 s1_plot_rels
 ```
+
+```{r}
+bind_rows(
+  r %>% 
+    mutate(model = "fine-tuned", kind = "manifest") %>% 
+    select(model, kind, accuracy = estimate, conf.low, conf.high),
+  s1_r %>% 
+    mutate(model = "fine-tuned, conditioned on empirical r", kind = "manifest") %>% 
+    select(model, kind, accuracy = estimate, conf.low, conf.high),
+  accuracy_bayes_rels %>% 
+    mutate(model = "fine-tuned", kind = "latent outcome (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper),
+  accuracy_bayes_rels_poly %>% 
+    mutate(model = "fine-tuned, conditioned on empirical r", kind = "latent outcome (Bayesian EIV)") %>% 
+    select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper),
+  ) %>% 
+  knitr::kable(digits = 2, caption = "Accuracy of synthetic alphas when empirical alphas are biased upward through adaptive item reversion and selection on positive alphas")
+```
+
 
 
 #### Number of items as a trivial predictor
