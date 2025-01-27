@@ -275,3 +275,108 @@ arrow::write_feather(pt_manifest_scores, sink = file.path(data_path, glue("ignor
 ```
 
 
+## Create random scales
+```{r}
+mapping_data <- holdout_mapping_data %>%
+  rename(scale_0 = scale0,
+         scale_1 = scale1)
+
+items_by_scale <- bind_rows(
+  scales %>% filter(scale_1 == "") %>% left_join(mapping_data %>% select(-scale_1), by = c("instrument", "scale_0")),
+  scales %>% filter(scale_1 != "") %>% left_join(mapping_data, by = c("instrument", "scale_0", "scale_1"))
+)
+set.seed(05102019)
+
+random_scales <- list()
+for(i in 1:200) {
+  n_items <- rpois(1, 6)
+  n_items <- if_else(n_items < 3, 3, n_items)
+  random_scales[[i]] <- holdout_mapping_data %>%
+    sample_n(n_items) %>%
+    mutate(scale = paste0("random", i)) %>%
+    group_by(scale) %>%
+    summarise(
+      items = list(variable),
+      number_of_items = n_distinct(variable),
+      lvn = paste(first(scale), " =~ ", paste(variable, collapse = " + "))) %>%
+    drop_na() %>% 
+    mutate(keyed = 1)
+}
+
+random_scales <- bind_rows(random_scales) %>% 
+  distinct(items, .keep_all = TRUE) %>% 
+  rowwise() %>% 
+  mutate(
+    reverse_items = list(randomly_choose_items_for_reversion(items))
+    ) %>% 
+  ungroup()
+nrow(random_scales)
+write_rds(random_scales, file = file.path(data_path, glue("ignore.pilot_study.random_scales.rds")))
+
+
+holdout_llm <- holdout_item_pairs %>%
+  left_join(mapping_data %>% select(variable_1 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>%
+  left_join(mapping_data %>% select(variable_2 = variable, InstrumentB = instrument, ScaleB = scale_0, SubscaleB = scale_1))
+
+pt_holdout_llm <- pt_holdout_item_pairs %>%
+  left_join(mapping_data %>% select(variable_1 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>%
+  left_join(mapping_data %>% select(variable_2 = variable, InstrumentB = instrument, ScaleB = scale_0, SubscaleB = scale_1))
+
+cors_llm <- holdout_item_pairs %>%
+  select(x = variable_1, y = variable_2, r = synthetic_r) %>%
+  as.data.frame() |>
+  igraph::graph_from_data_frame(directed = FALSE) |>
+  igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
+diag(cors_llm) <- 1
+
+pt_cors_llm <- pt_holdout_item_pairs %>%
+  select(x = variable_1, y = variable_2, r = synthetic_r) %>%
+  as.data.frame() |>
+  igraph::graph_from_data_frame(directed = FALSE) |>
+  igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
+diag(pt_cors_llm) <- 1
+
+cors_real <- holdout_llm %>% 
+  select(x = variable_1, y = variable_2, r = empirical_r) %>%
+  as.data.frame() |>
+  igraph::graph_from_data_frame(directed = FALSE) |>
+  igraph::as_adjacency_matrix(attr = "r", sparse = FALSE)
+diag(cors_real) <- 1
+
+real_scales <- items_by_scale %>%
+  group_by(scale) %>%
+  summarise(
+    items = list(variable),
+    number_of_items = n_distinct(variable),
+    keyed = first(keyed),
+    lvn = paste(first(scale), " =~ ", paste(variable, collapse = " + "))) %>%
+  group_by(scale) %>%
+  mutate(reverse_items = list(find_reverse_items_by_first_item(cors_real[unlist(items), unlist(items)], keyed))) %>% 
+  drop_na() %>% 
+  ungroup()
+
+scales <- bind_rows(real = real_scales, random = random_scales, .id = "type")
+
+holdout_human_data <- holdout_human_data %>% haven::zap_labels()
+scales <- scales %>%
+  rowwise() %>%
+  mutate(pt_r_llm = list(pt_cors_llm[items, items]),
+         r_llm = list(cors_llm[items, items]),
+         r_real = list(cors_real[items, items]),
+         reverse_items_by_1st = list(find_reverse_items_by_first_item(r_real, keyed)),
+         N_real = holdout_item_pairs %>% 
+           filter(variable_1 %in% items, variable_2 %in% items) %>% 
+           summarise(min_n=min(pairwise_n)) %>% pull(min_n)) %>%
+  mutate(
+    rel_real = list(psych::alpha(holdout_human_data[, items], keys = reverse_items, n.iter = 1000)),
+    rel_llm = list(psych::alpha(r_llm, keys = reverse_items, n.obs = N_real)$feldt),
+    rel_pt_llm = list(psych::alpha(pt_r_llm, keys = reverse_items, n.obs = N_real)$feldt)) %>%
+  mutate(empirical_alpha = rel_real$feldt$alpha$raw_alpha,
+         synthetic_alpha = rel_llm$alpha$raw_alpha,
+         pt_synthetic_alpha = rel_pt_llm$alpha$raw_alpha) %>%
+  mutate(
+    empirical_alpha_se = sd(rel_real$boot[,"raw_alpha"]),
+  )
+
+write_rds(scales, file = file.path(data_path, glue("ignore.scales_with_alpha_se.rds")))
+```

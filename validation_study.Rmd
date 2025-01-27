@@ -999,7 +999,7 @@ scales %>%
   knitr::kable(digits = 2, caption = "Regression intercepts and slopes for randomly formed and real scales")
 ```
 
-#### As in Stage 1
+#### As in our Stage 1 submission
 Here are the results if we calculate the accuracy and prediction error as in the Stage 1 submission. We now think this approach, by conditioning on random variation in the empirical correlations, gave a misleading picture of the accuracy and bias of the synthetic Cronbach's alphas. Here we report the results if we conduct the analysis as in Stage 1 (but with the corrected SE of empirical alphas).
 
 ```{r}
