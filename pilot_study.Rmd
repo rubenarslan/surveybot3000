@@ -116,7 +116,8 @@ epreds <- epred_draws(newdata = newdata, obj = m_synth_r_items, re_formula = NA,
 preds <- predicted_draws(newdata = newdata, obj = m_synth_r_items, re_formula = NA, ndraws = 200)
 epred_preds <- epreds %>% left_join(preds)
 by_draw <- epred_preds %>% group_by(.draw) %>% 
-  summarise(.epred = var(.epred),
+  summarise(mae = mean(abs(.epred - .prediction)),
+            .epred = var(.epred),
             .prediction = var(.prediction),
             sigma = sqrt(.prediction - .epred),
             latent_r = sqrt(.epred/.prediction))
@@ -156,6 +157,7 @@ m_synth_r_items
 
 pred <- conditional_effects(m_synth_r_items, method = "predict")
 kable(rmse_items <- by_draw %>% mean_hdci(sigma), caption = "Average prediction error (RMSE)", digits = 2)
+kable(mae_items <- by_draw %>% mean_hdci(mae), caption = "Average prediction error (MAE)", digits = 2)
 
 plot_prediction_error_items <- plot(conditional_effects(m_synth_r_items, dpar = "sigma"), plot = F)[[1]] + 
   theme_bw() + 
@@ -245,8 +247,8 @@ m_synth_r_items_poly <- brm(
   file = "ignore/m_synth_r_items_lm_poly")
 
 newdata <- m_synth_r_items_poly$data %>% select(empirical_r, synthetic_r, empirical_r_se)
-epreds <- epred_draws(newdata = newdata, obj = m_synth_r_items_poly, re_formula = NA)
-preds <- predicted_draws(newdata = newdata, obj = m_synth_r_items_poly, re_formula = NA)
+epreds <- epred_draws(newdata = newdata, obj = m_synth_r_items_poly, re_formula = NA, ndraws = 200)
+preds <- predicted_draws(newdata = newdata, obj = m_synth_r_items_poly, re_formula = NA, ndraws = 200)
 epred_preds <- epreds %>% left_join(preds)
 by_draw <- epred_preds %>% group_by(.draw) %>% 
   summarise(.epred = var(.epred),
@@ -266,6 +268,17 @@ bind_rows(
 ) %>% 
   knitr::kable(digits = 2, caption = "Comparing spline and polynomial models for item correlations")
 ```
+
+```{r}
+plot_prediction_error_items_poly <- plot(conditional_effects(m_synth_r_items_poly, dpar = "sigma"), plot = F)[[1]] + 
+  theme_bw() + 
+  xlab("Synthetic inter-item correlation") + 
+  ylab("Prediction error (sigma)") +
+  geom_smooth(stat = "identity", color = "#a48500", fill = "#EDC951")
+
+plot_prediction_error_items_poly
+```
+
 
 Is the accuracy lower within/across scales and instruments?
 
@@ -905,6 +918,16 @@ bind_rows(
 ```
 
 
+```{r}
+plot_prediction_error_scales_poly <- plot(conditional_effects(m_lmsynth_r_scales_poly, dpar = "sigma"), plot = F)[[1]] + 
+  theme_bw() + 
+  geom_smooth(stat = "identity", color = "#a48500", fill = "#EDC951") + 
+  xlab("Synthetic inter-scale correlation") + 
+  ylab("Prediction error (sigma)")
+plot_prediction_error_scales_poly
+```
+
+
 #### How does number of items across the two scales relate to accuracy?
 
 ```{r}
@@ -988,15 +1011,16 @@ pt_plot_rels2 <- pt_plot_rels +
   annotate("segment", x = 0.11, y = 0.93, xend = -1.477226, yend = 0.71, color = "#00A0B0", alpha = 0.7)
 
 plot_rels2 <- plot_rels + 
-  annotate("text", size = 3, x = 0, y = .985, vjust = 0, hjust = 0, label = with(accuracy_bayes_rels, { sprintf("accuracy = %.2f [%.2f;%.2f]", latent_r, .lower, .upper) })) +
-  annotate("text", size = 2.5, x = 0.4, y = 0.1, hjust = 0, label = "randomly formed scales", color = "#6A4A3C") +
-  annotate("segment", x = 0.395, y = 0.1, xend = 0.39, yend = 0.4864297, color = "#6A4A3C", alpha = 0.7) +
-  annotate("segment", x = 0.395, y = 0.1, xend = 0.285, yend = 0.2279919, color = "#6A4A3C", alpha = 0.7) +
-  annotate("segment", x = 0.395, y = 0.1, xend = 0.2, yend = 0.075, color = "#6A4A3C", alpha = 0.7) +
+  annotate("text", size = 3, x = -1, y = 0.98, vjust = 0, hjust = 0, label = with(accuracy_bayes_rels, { sprintf("accuracy = %.2f [%.2f;%.2f]", latent_r, .lower, .upper) })) +
+  annotate("text", size = 2.5, x = -0.2, y = -0.9, hjust = 0, label = "randomly formed scales", color = "#6A4A3C") +
+  annotate("segment", x = 0.4, y = -0.85, xend = 0.3031395, yend = 0.2203219, color = "#6A4A3C", alpha = 0.7) +
+  annotate("segment", x = 0.4, y = -0.85, xend = 0.1212016, yend = -0.35756182, color = "#6A4A3C", alpha = 0.7) +
+  annotate("segment", x = 0.4, y = -0.85, xend = -0.0005157098, yend = -0.79969511, color = "#6A4A3C", alpha = 0.7) +
+
   annotate("text", size = 2.5, x = 0.61, y = 0.4, hjust = 0, label = "IPIP Extraversion", color = "#00A0B0") +
   annotate("segment", x = 0.75, y = 0.42, xend = 0.87, yend = 0.90, color = "#00A0B0", alpha = 0.7) +
-  annotate("text", size = 2.5, x = -0.02, y = 0.86, hjust = 0, label = "LOT Optimism", color = "#00A0B0") +
-  annotate("segment", x = 0.11, y = 0.83, xend = 0.15, yend = 0.71, color = "#00A0B0", alpha = 0.7)
+  annotate("text", size = 2.5, x = -0.32, y = 0.86, hjust = 0, label = "LOT Optimism", color = "#00A0B0") +
+  annotate("segment", x = 0, y = 0.83, xend = 0.15, yend = 0.71, color = "#00A0B0", alpha = 0.7)
 
 pt_plot_scales2 <- pt_plot_scales +
   annotate("text", size = 2.5, x = -0.2, y = 0.8, hjust = 1, label = "r(BFI Neuroticism,\nIPIP Neuroticism)", color = "#00A0B0") +
