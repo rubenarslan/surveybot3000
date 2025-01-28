@@ -1562,12 +1562,27 @@ pt_plot_rels2 <- pt_plot_rels +
   annotate("text", size = 2.5, x = -1, y = 0.5, hjust = 0, label = "HEXACO fairness", color = "#00A0B0") +
   annotate("segment", x = -0.65, y = 0.55,  xend = -0.3262759, yend = 0.8217475, color = "#00A0B0", alpha = 0.7)
 
+
+get_scale_point <- function(data, synthetic_approx, empirical_approx) {
+  data %>%
+    ungroup() %>% 
+    # Find closest point to target coordinates
+    mutate(dist = sqrt((synthetic_alpha - synthetic_approx)^2 + 
+                      (empirical_alpha - empirical_approx)^2)) %>%
+    arrange(dist) %>%
+    slice(1) %>%
+    select(synthetic_alpha, empirical_alpha)
+}
+p1 <- get_scale_point(scales, 0.30, 0.22)
+p2 <- get_scale_point(scales, 0.12, -0.36) 
+p3 <- get_scale_point(scales, -0.4, -0.90)
+
 plot_rels2 <- plot_rels + 
   annotate("text", size = 3, x = -1, y = .98, vjust = 0, hjust = 0, label = with(accuracy_bayes_rels, { sprintf("accuracy = %.2f [%.2f;%.2f]", latent_r, .lower, .upper) })) +
   annotate("text", size = 2.5, x = -0.2, y = -0.9, hjust = 0, label = "randomly formed scales", color = "#6A4A3C") +
-  annotate("segment", x = 0.4, y = -0.85, xend = 0.3031395, yend = 0.2203219, color = "#6A4A3C", alpha = 0.7) +
-  annotate("segment", x = 0.4, y = -0.85, xend = 0.1212016, yend = -0.35756182, color = "#6A4A3C", alpha = 0.7) +
-  annotate("segment", x = 0.4, y = -0.85, xend = -0.0005157098, yend = -0.79969511, color = "#6A4A3C", alpha = 0.7) +
+  annotate("segment", x = 0.4, y = -0.85, xend = p1$synthetic_alpha, yend = p1$empirical_alpha, color = "#6A4A3C", alpha = 0.7) +
+  annotate("segment", x = 0.4, y = -0.85, xend = p2$synthetic_alpha, yend = p2$empirical_alpha, color = "#6A4A3C", alpha = 0.7) +
+  annotate("segment", x = 0.4, y = -0.85, xend = p3$synthetic_alpha, yend = p3$empirical_alpha, color = "#6A4A3C", alpha = 0.7) +
   
   annotate("text", size = 2.5, x = 0.68, y = 0, hjust = 0.5, label = "Fear of COVID", color = "#00A0B0") +
   annotate("segment", x = 0.68, y = 0.05, xend = 0.8864024, yend = 0.9262542, color = "#00A0B0", alpha = 0.7) +
@@ -1603,8 +1618,8 @@ plot_scales2 <- plot_scales +
     plot_rels2  +
     plot_scales2)
 
-ggsave("ignore/Figure_rr.pdf", width = 8.3, height = 6, device = grDevices::cairo_pdf)
-ggsave("ignore/Figure_rr.png", width = 8.3, height = 6)
+ggsave("Figure_rr.pdf", width = 8.3, height = 6, device = grDevices::cairo_pdf)
+ggsave("Figure_rr.png", width = 8.3, height = 6)
 ```
 
 ### Prediction error plots
