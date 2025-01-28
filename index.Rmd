@@ -15,6 +15,8 @@ output:
 - [Pilot Study Results](docs/validation_study.html)
   - [Interactive Item Plot](docs/2_interactive_item_plot.html)
 
+![Main results pilot](Figure_pilot.png)
+
 ### Registered Report Stage 1
 - [Registered Report Precision Simulations](docs/3_rr_precision_simulations.html)
  
@@ -25,3 +27,4 @@ output:
   - [Interactive Item Plot (Registered Report)](docs/2_interactive_item_plot_rr.html)
 
 
+![Main results validation](Figure_rr.png)

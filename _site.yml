@@ -5,10 +5,26 @@ navbar:
   left:
   - text: Overview
     href: index.html
-  - text: Vector to Cosine
-    href: 1_vector_to_cosine.html
-  - text: Precision simulations
+  - text: Pilot Study
+    menu:
+    - text: Import and prepare data
+      href: 1_vector_to_cosine.html
+    - text: Pilot Study Results
+      href: pilot_study.html
+    - text: Interactive Item Plot
+      href: 2_interactive_item_plot.html
+  - text: RR Precision Simulations
     href: 3_rr_precision_simulations.html
+  - text: Validation Study
+    menu:
+    - text: Import and prepare data
+      href: 1_import_validation_study.html
+    - text: Codebook
+      href: codebook.html
+    - text: Validation Study Results
+      href: validation_study.html
+    - text: Interactive Item Plot (RR)
+      href: 2_interactive_item_plot_rr.html
   right:
   - text: ''
     icon: fa-github
