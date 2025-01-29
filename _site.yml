@@ -28,7 +28,7 @@ navbar:
   right:
   - text: ''
     icon: fa-github
-    href: https://github.com/rubenarslan/items_llm
+    href: https://github.com/synth-science/surveybot3000
 output:
   html_document:
     theme: paper
