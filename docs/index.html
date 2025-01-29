@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2025-01-28" />
+<meta name="date" content="2025-01-29" />
 
 <title>Language models accurately infer correlations between psychological items and scales from text alone</title>
 
@@ -395,7 +395,7 @@ div.tocify {
 
 <h1 class="title toc-ignore">Language models accurately infer
 correlations between psychological items and scales from text alone</h1>
-<h4 class="date">2025-01-28</h4>
+<h4 class="date">2025-01-29</h4>
 
 </div>
 
@@ -405,11 +405,10 @@ correlations between psychological items and scales from text alone</h1>
 <div id="pilot-study" class="section level3">
 <h3>Pilot Study</h3>
 <ul>
-<li><a href="docs/1_vector_to_cosine.html">Import and prepare
-data</a></li>
-<li><a href="docs/validation_study.html">Pilot Study Results</a>
+<li><a href="1_vector_to_cosine.html">Import and prepare data</a></li>
+<li><a href="validation_study.html">Pilot Study Results</a>
 <ul>
-<li><a href="docs/2_interactive_item_plot.html">Interactive Item
+<li><a href="2_interactive_item_plot.html">Interactive Item
 Plot</a></li>
 </ul></li>
 </ul>
@@ -421,7 +420,7 @@ Plot</a></li>
 <div id="registered-report-stage-1" class="section level3">
 <h3>Registered Report Stage 1</h3>
 <ul>
-<li><a href="docs/3_rr_precision_simulations.html">Registered Report
+<li><a href="3_rr_precision_simulations.html">Registered Report
 Precision Simulations</a></li>
 </ul>
 </div>
@@ -429,12 +428,17 @@ Precision Simulations</a></li>
 class="section level3">
 <h3>Registered Report Stage 2: Validation Study</h3>
 <ul>
-<li><a href="docs/1_import_validation_study.html">Import and prepare
+<li><a href="1_import_validation_study.html">Import and prepare
 data</a></li>
-<li><a href="docs/codebook.html">Codebook</a></li>
-<li><a href="docs/validation_study.html">Validation Study Results</a>
+<li><a href="codebook.html">Codebook</a>
 <ul>
-<li><a href="docs/2_interactive_item_plot_rr.html">Interactive Item Plot
+<li><a href="rr_data.csv">Data in CSV format</a></li>
+<li><a href="rr_data.sav">Data in SAV format</a></li>
+<li><a href="rr_data.rds">Data in RDS format</a></li>
+</ul></li>
+<li><a href="validation_study.html">Validation Study Results</a>
+<ul>
+<li><a href="2_interactive_item_plot_rr.html">Interactive Item Plot
 (Registered Report)</a></li>
 </ul></li>
 </ul>
@@ -445,7 +449,7 @@ data</a></li>
 </div>
 </div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiTGFuZ3VhZ2UgbW9kZWxzIGFjY3VyYXRlbHkgaW5mZXIgY29ycmVsYXRpb25zIGJldHdlZW4gcHN5Y2hvbG9naWNhbCBpdGVtcyBhbmQgc2NhbGVzIGZyb20gdGV4dCBhbG9uZSIKZGF0ZTogImByIFN5cy5EYXRlKClgIgpvdXRwdXQ6IAogIGh0bWxfZG9jdW1lbnQ6CiAgICB0b2M6IHRydWUKICAgIHRvY19mbG9hdDogdHJ1ZQogICAgY3NzOiBzdHlsZS5jc3MgCi0tLQoKIyMgVGFibGUgb2YgY29udGVudHMKCiMjIyBQaWxvdCBTdHVkeQotIFtJbXBvcnQgYW5kIHByZXBhcmUgZGF0YV0oZG9jcy8xX3ZlY3Rvcl90b19jb3NpbmUuaHRtbCkKLSBbUGlsb3QgU3R1ZHkgUmVzdWx0c10oZG9jcy92YWxpZGF0aW9uX3N0dWR5Lmh0bWwpCiAgLSBbSW50ZXJhY3RpdmUgSXRlbSBQbG90XShkb2NzLzJfaW50ZXJhY3RpdmVfaXRlbV9wbG90Lmh0bWwpCgohW01haW4gcmVzdWx0cyBwaWxvdF0oRmlndXJlX3BpbG90LnBuZykKCiMjIyBSZWdpc3RlcmVkIFJlcG9ydCBTdGFnZSAxCi0gW1JlZ2lzdGVyZWQgUmVwb3J0IFByZWNpc2lvbiBTaW11bGF0aW9uc10oZG9jcy8zX3JyX3ByZWNpc2lvbl9zaW11bGF0aW9ucy5odG1sKQogCiMjIyBSZWdpc3RlcmVkIFJlcG9ydCBTdGFnZSAyOiBWYWxpZGF0aW9uIFN0dWR5Ci0gW0ltcG9ydCBhbmQgcHJlcGFyZSBkYXRhXShkb2NzLzFfaW1wb3J0X3ZhbGlkYXRpb25fc3R1ZHkuaHRtbCkKLSBbQ29kZWJvb2tdKGRvY3MvY29kZWJvb2suaHRtbCkKLSBbVmFsaWRhdGlvbiBTdHVkeSBSZXN1bHRzXShkb2NzL3ZhbGlkYXRpb25fc3R1ZHkuaHRtbCkKICAtIFtJbnRlcmFjdGl2ZSBJdGVtIFBsb3QgKFJlZ2lzdGVyZWQgUmVwb3J0KV0oZG9jcy8yX2ludGVyYWN0aXZlX2l0ZW1fcGxvdF9yci5odG1sKQoKCiFbTWFpbiByZXN1bHRzIHZhbGlkYXRpb25dKEZpZ3VyZV9yci5wbmcpCg==</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiTGFuZ3VhZ2UgbW9kZWxzIGFjY3VyYXRlbHkgaW5mZXIgY29ycmVsYXRpb25zIGJldHdlZW4gcHN5Y2hvbG9naWNhbCBpdGVtcyBhbmQgc2NhbGVzIGZyb20gdGV4dCBhbG9uZSIKZGF0ZTogImByIFN5cy5EYXRlKClgIgpvdXRwdXQ6IAogIGh0bWxfZG9jdW1lbnQ6CiAgICB0b2M6IHRydWUKICAgIHRvY19mbG9hdDogdHJ1ZQogICAgY3NzOiBzdHlsZS5jc3MgCi0tLQoKIyMgVGFibGUgb2YgY29udGVudHMKCiMjIyBQaWxvdCBTdHVkeQotIFtJbXBvcnQgYW5kIHByZXBhcmUgZGF0YV0oMV92ZWN0b3JfdG9fY29zaW5lLmh0bWwpCi0gW1BpbG90IFN0dWR5IFJlc3VsdHNdKHZhbGlkYXRpb25fc3R1ZHkuaHRtbCkKICAtIFtJbnRlcmFjdGl2ZSBJdGVtIFBsb3RdKDJfaW50ZXJhY3RpdmVfaXRlbV9wbG90Lmh0bWwpCgohW01haW4gcmVzdWx0cyBwaWxvdF0oRmlndXJlX3BpbG90LnBuZykKCiMjIyBSZWdpc3RlcmVkIFJlcG9ydCBTdGFnZSAxCi0gW1JlZ2lzdGVyZWQgUmVwb3J0IFByZWNpc2lvbiBTaW11bGF0aW9uc10oM19ycl9wcmVjaXNpb25fc2ltdWxhdGlvbnMuaHRtbCkKIAojIyMgUmVnaXN0ZXJlZCBSZXBvcnQgU3RhZ2UgMjogVmFsaWRhdGlvbiBTdHVkeQotIFtJbXBvcnQgYW5kIHByZXBhcmUgZGF0YV0oMV9pbXBvcnRfdmFsaWRhdGlvbl9zdHVkeS5odG1sKQotIFtDb2RlYm9va10oY29kZWJvb2suaHRtbCkKICAtIFtEYXRhIGluIENTViBmb3JtYXRdKHJyX2RhdGEuY3N2KQogIC0gW0RhdGEgaW4gU0FWIGZvcm1hdF0ocnJfZGF0YS5zYXYpCiAgLSBbRGF0YSBpbiBSRFMgZm9ybWF0XShycl9kYXRhLnJkcykKLSBbVmFsaWRhdGlvbiBTdHVkeSBSZXN1bHRzXSh2YWxpZGF0aW9uX3N0dWR5Lmh0bWwpCiAgLSBbSW50ZXJhY3RpdmUgSXRlbSBQbG90IChSZWdpc3RlcmVkIFJlcG9ydCldKDJfaW50ZXJhY3RpdmVfaXRlbV9wbG90X3JyLmh0bWwpCgoKIVtNYWluIHJlc3VsdHMgdmFsaWRhdGlvbl0oRmlndXJlX3JyLnBuZykK</div>
 
 
 </div>
