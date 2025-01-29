@@ -712,7 +712,7 @@ ggplot(scales, aes(pt_synthetic_alpha, empirical_alpha,
   xlab("Synthetic Cronbach's alpha") + 
   ylab("Empirical Cronbach's alpha") +
   theme_bw() +
-  coord_fixed(xlim = c(0,1), ylim = c(0,1)) -> pt_plot_rels
+  coord_fixed(xlim = c(-1,1), ylim = c(-1,1)) -> pt_plot_rels
 pt_plot_rels
 ```
 
@@ -984,6 +984,32 @@ pt_plot_scales
 ## Combined plot
 
 ```{r fig.width = 8.3, fig.height = 6}
+
+
+get_scale_point <- function(data, synthetic_approx, empirical_approx) {
+  data %>%
+    ungroup() %>% 
+    # Find closest point to target coordinates
+    mutate(dist = sqrt((synthetic_alpha - synthetic_approx)^2 + 
+                      (empirical_alpha - empirical_approx)^2)) %>%
+    arrange(dist) %>%
+    slice(1) %>%
+    select(synthetic_alpha, empirical_alpha)
+}
+get_scale_point_by_name <- function(data, name) {
+  data %>%
+    filter(scale == name) %>%
+    slice(1) %>%
+    select(synthetic_alpha, empirical_alpha, pt_synthetic_alpha)
+}
+ipip_e <- get_scale_point_by_name(scales, "International_Personality_Item_Pool_120_extraversion")
+lot_o <- get_scale_point_by_name(scales, "Life_Orientation_Test_Optimism")
+# get_scale_point_by_name <- function(data, var_1, var_2) {
+#   data %>%
+#     filter(variable_1 == scale_name) %>% 
+#     select(synthetic_r, empirical_r)
+# }
+
 library(patchwork)
 pt_plot_items2 <- pt_plot_items +
     annotate("text", size = 2.5, x = 0.5, y = -0.8, vjust = 1, hjust = 1, label = "r(I fear for the worst,\nI never worry about anything)", color = "#00A0B0") +
@@ -1005,21 +1031,11 @@ plot_items2 <- plot_items +
 
 
 pt_plot_rels2 <- pt_plot_rels + 
-  annotate("text", size = 2.5, x = 0.61, y = 0.25, hjust = 0, label = "IPIP Extraversion", color = "#00A0B0") +
-  annotate("segment", x = 0.7, y = 0.27, xend = 0.9, yend = 0.90, color = "#00A0B0", alpha = 0.7) +
+  annotate("text", size = 2.5, x = 0.21, y = -0.2, hjust = 0, label = "IPIP Extraversion", color = "#00A0B0") +
+  annotate("segment", x = 0.75, y = -0.2, xend = 0.87, yend = 0.90, color = "#00A0B0", alpha = 0.7) +
   annotate("text", size = 2.5, x = -0.02, y = 0.95, hjust = 0, label = "LOT Optimism", color = "#00A0B0") +
   annotate("segment", x = 0.11, y = 0.93, xend = -1.477226, yend = 0.71, color = "#00A0B0", alpha = 0.7)
 
-get_scale_point <- function(data, synthetic_approx, empirical_approx) {
-  data %>%
-    ungroup() %>% 
-    # Find closest point to target coordinates
-    mutate(dist = sqrt((synthetic_alpha - synthetic_approx)^2 + 
-                      (empirical_alpha - empirical_approx)^2)) %>%
-    arrange(dist) %>%
-    slice(1) %>%
-    select(synthetic_alpha, empirical_alpha)
-}
 p1 <- get_scale_point(scales, 0.30, 0.22)
 p2 <- get_scale_point(scales, 0.12, -0.36) 
 p3 <- get_scale_point(scales, -0.4, -0.90)
@@ -1033,10 +1049,10 @@ plot_rels2 <- plot_rels +
   annotate("segment", x = 0.4, y = -0.85, xend = p2$synthetic_alpha, yend = p2$empirical_alpha, color = "#6A4A3C", alpha = 0.7) +
   annotate("segment", x = 0.4, y = -0.85, xend = p3$synthetic_alpha, yend = p3$empirical_alpha, color = "#6A4A3C", alpha = 0.7) +
 
-  annotate("text", size = 2.5, x = 0.61, y = 0.4, hjust = 0, label = "IPIP Extraversion", color = "#00A0B0") +
-  annotate("segment", x = 0.75, y = 0.42, xend = 0.87, yend = 0.90, color = "#00A0B0", alpha = 0.7) +
+  annotate("text", size = 2.5, x = 0.21, y = -0.2, hjust = 0, label = "IPIP Extraversion", color = "#00A0B0") +
+  annotate("segment", x = 0.75, y = -0.2, xend = 0.87, yend = 0.90, color = "#00A0B0", alpha = 0.7) +
   annotate("text", size = 2.5, x = -0.32, y = 0.86, hjust = 0, label = "LOT Optimism", color = "#00A0B0") +
-  annotate("segment", x = 0, y = 0.83, xend = 0.15, yend = 0.71, color = "#00A0B0", alpha = 0.7)
+  annotate("segment", x = 0, y = 0.83, xend = 0.49, yend = 0.71, color = "#00A0B0", alpha = 0.7)
 
 pt_plot_scales2 <- pt_plot_scales +
   annotate("text", size = 2.5, x = -0.2, y = 0.8, hjust = 1, label = "r(BFI Neuroticism,\nIPIP Neuroticism)", color = "#00A0B0") +

@@ -39,7 +39,7 @@ rr_human_data_with_inclusion_criteria = rio::import("../synth-rep-dataset/data/p
 # setdiff(names(rr_human_data_with_inclusion_criteria), names(rr_human_data_with_reversed_items)) %>% dput()
 rr_human_data_with_inclusion_criteria <- rr_human_data_with_inclusion_criteria %>% select(one_of(c("CASE","even_odd", "psychant", 
 "psychsyn", "mahal_dist", 
-"longstring", "time_per_item", "included")))
+"longstring", "time_per_item", "not_serious", "included")))
 rr_human_data_with_inclusion_criteria <- rr_human_data_with_inclusion_criteria %>% 
   full_join(rr_human_data_with_reversed_items)
 rr_human_data_included <- rr_human_data_with_inclusion_criteria %>% filter(included) %>% 
@@ -88,6 +88,38 @@ table(rr_human_data_included$Nationality != "United States")
 rr_human_data_included %>% group_by(education) %>% 
   summarise(n())
 # table(str_replace_all(str_to_lower(str_trim(rr_human_data_included$SD13_02)), "-", ""))
+```
+
+```{r}
+rr_human_data_share <- rr_human_data_included %>% select(
+  CASE, 
+  # Demographic variables
+  age, Age_prolific, sex, gender,
+  education, occupation, Nationality,
+  race, hispanic, non_hispanic_white,
+  
+  # Metadata/Quality Control variables
+  even_odd, psychant, psychsyn, mahal_dist,
+  longstring, time_per_item, included, not_serious,
+  Language, total_approvals = `Total approvals`,
+  
+  # Main questionnaire items (using starts_with)
+  starts_with(c("AAID", "PANAS", "PAQ", "PSS", "NEPS", 
+                "ULS", "FCV", "DAQ", "CESD", "HEXACO", 
+                "OCIR", "PTQ", "RAAS", "KSA", "SAS", 
+                "MFQ", "CQ", "OLBI", "UWES", "WGS")),
+  
+  # Explicitly exclude reversed items
+  -ends_with("_R"),
+  
+  # Explicitly exclude other prefixes/patterns
+  -starts_with(c("BH", "WS", "BFI", "MS", "PR", "RG", "ZY")),
+  -matches("^OC[0-9]"),
+)
+
+haven::write_sav(rr_human_data_share, "docs/rr_data.sav")
+rio::export(rr_human_data_share, "docs/rr_data.csv")
+rio::export(rr_human_data_share, "docs/rr_data.rds")
 ```
 
 
