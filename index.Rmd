@@ -20,7 +20,7 @@ output:
 ### Registered Report Stage 1
 - [Registered Report Precision Simulations](docs/3_rr_precision_simulations.html)
  
-### Validation Study
+### Registered Report Stage 2: Validation Study
 - [Import and prepare data](docs/1_import_validation_study.html)
 - [Codebook](docs/codebook.html)
 - [Validation Study Results](docs/validation_study.html)
