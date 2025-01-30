@@ -28,6 +28,7 @@ output:
   - [Data in RDS format](rr_data.rds)
 - [Validation Study Results](validation_study.html)
   - [Interactive Item Plot (Registered Report)](2_interactive_item_plot_rr.html)
+  - [Margin of error comparison](se_sample_size.html)
 
 
 ![Main results validation](Figure_rr.png)
