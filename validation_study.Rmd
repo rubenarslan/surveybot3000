@@ -363,6 +363,7 @@ accuracy_between_domains %>%
 ```
 
 ```{r}
+library(ggrepel)
 dodge <- 0.6
 bind_rows(
 within = accuracy_within_domains,
@@ -374,11 +375,16 @@ ggplot(aes(x = domain, r, ymin = conf.low, ymax = conf.high, shape = kind, fill 
   # geom_linerange(aes(ymin = pt_cor, ymax = r, group = kind), color = "gray", position = position_dodge(width = 1)) +
   # geom_point(aes(y = pt_cor, group = kind), color = "black", position = position_dodge(width = 1), size = 2.5) +
   geom_pointrange(position = position_dodge(width = dodge)) + 
-  scale_fill_viridis_d(guide = "none") + 
+  scale_fill_manual(values = c("#a48500", "#a48500"), guide = "none") + 
   scale_shape_manual(values = c("within" = 19, "across" = 4), guide = "none") +
   # scale_color_viridis_d(end = 0.7, option = "A", guide = "none") +
-  scale_y_continuous("Manifest accuracy", limits = c(0, 1)) +
-  geom_text(aes(label = sprintf("%.2f", r)), hjust = -0.3, vjust = -0.4, size = 3, position = position_dodge(width = dodge))
+  scale_y_continuous("Manifest accuracy of synthetic item pair correlations", limits = c(0, 1)) +
+  xlab("Item domain") +
+  annotate("text", label = "SBERT", x = 2.85, y = 0.24,  angle = 90) +
+  annotate("text", label = "SurveyBot3000", x = 3.15, y = 0.43,  angle = 90) +
+  annotate("text_repel", label = "within domain", x = 2.85, y = .745, force = 2, hjust = 1.15, vjust = -2) +
+  annotate("text_repel", label = "across domains", x = 3.15, y = .65, force = 2, hjust = -.15, vjust = -2) +
+  geom_text(aes(label = sprintf("%.2f", r), hjust = if_else(kind == "within", 1.3, -0.3)), vjust = -0.4, size = 3, position = position_dodge(width = dodge))
 ggsave("Figure_rr_domain.png", width = 6, height = 5)
 ```
 
@@ -601,6 +607,28 @@ rr_validation_llm %>% summarise(
 ```
 
 #### By sign & accuracy for absolute correlations
+```{r}
+rr_validation_llm %>% 
+  summarise(mean( sign(synthetic_r) > 0), mean( sign(empirical_r) > 0))
+```
+
+What if a human in the loop flipped the sign?
+
+```{r}
+rr_validation_llm %>% filter(abs(synthetic_r) >= .10) %>% 
+  group_by(sign(synthetic_r)) %>% 
+  summarise(round(1 - mean(sign(empirical_r) == sign(synthetic_r)),2))
+
+rr_validation_llm %>%  
+  group_by(sign(synthetic_r)) %>% 
+  summarise(round(1 - mean(sign(empirical_r) == sign(synthetic_r)),2))
+
+cor_switch <- rr_validation_llm %>% mutate(synthetic_r = if_else(abs(synthetic_r) <= .10 | sign(synthetic_r) == sign(empirical_r), synthetic_r,
+                                                                 -1*synthetic_r)) %>% 
+  { broom::tidy(cor.test(.$synthetic_r, .$empirical_r)) }
+cor_switch %>% select(accuracy = estimate, conf.low, conf.high) %>% mutate(kind = "manifest") %>% kable(caption = "If a human user flipped the sign to be correct for all synthetic estimates with an absolute magnitude bigger than .10", digits = 2)
+```
+
 
 ```{r}
 cor_abs <- broom::tidy(cor.test(abs(rr_validation_llm$synthetic_r), abs(rr_validation_llm$empirical_r)))
@@ -608,18 +636,6 @@ cor_neg <- rr_validation_llm %>% filter(empirical_r < 0) %>%
  { broom::tidy(cor.test(.$synthetic_r, .$empirical_r)) }
 cor_pos <- rr_validation_llm %>% filter(empirical_r > 0) %>% 
  { broom::tidy(cor.test(.$synthetic_r, .$empirical_r)) }
-
-rr_validation_llm %>% filter(abs(empirical_r) >= .10) %>% 
-  group_by(sign(empirical_r)) %>% 
-  summarise(mean(sign(empirical_r) == sign(synthetic_r)))
-
-rr_validation_llm %>% 
-  summarise(mean( sign(synthetic_r) > 0), mean( sign(empirical_r) > 0))
-
-cor_switch <- rr_validation_llm %>% mutate(synthetic_r = if_else(sign(synthetic_r) == sign(empirical_r), synthetic_r,
-                                                                 -1*synthetic_r)) %>% 
- { broom::tidy(cor.test(.$synthetic_r, .$empirical_r)) }
-
 
 ggplot(rr_validation_llm, aes(abs(synthetic_r), abs(empirical_r), color = factor(sign(empirical_r)))) + 
   annotate("text", size = 3, x = 0, y = 0.98, vjust = 0, hjust = 0, label = with(cor_abs, { sprintf("accuracy absolute r = %.2f [%.2f;%.2f]", estimate, conf.low, conf.high) }), color = 'black') +
