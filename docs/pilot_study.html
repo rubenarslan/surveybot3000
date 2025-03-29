@@ -566,9 +566,9 @@ Bainbridge et al. 2022.</p>
 <span id="cb1-34"><a href="#cb1-34" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
 <span id="cb1-35"><a href="#cb1-35" tabindex="-1"></a></span>
 <span id="cb1-36"><a href="#cb1-36" tabindex="-1"></a></span>
-<span id="cb1-37"><a href="#cb1-37" tabindex="-1"></a>holdout <span class="ot">&lt;-</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(<span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather&quot;</span>)))</span>
+<span id="cb1-37"><a href="#cb1-37" tabindex="-1"></a>holdout <span class="ot">&lt;-</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(<span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;data/intermediate/{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather&quot;</span>)))</span>
 <span id="cb1-38"><a href="#cb1-38" tabindex="-1"></a></span>
-<span id="cb1-39"><a href="#cb1-39" tabindex="-1"></a>pt_holdout <span class="ot">&lt;-</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(<span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;ignore.{pretrained_model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather&quot;</span>)))</span>
+<span id="cb1-39"><a href="#cb1-39" tabindex="-1"></a>pt_holdout <span class="ot">&lt;-</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(<span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;data/intermediate/{pretrained_model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather&quot;</span>)))</span>
 <span id="cb1-40"><a href="#cb1-40" tabindex="-1"></a></span>
 <span id="cb1-41"><a href="#cb1-41" tabindex="-1"></a>holdout_mapping_data <span class="ot">=</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(</span>
 <span id="cb1-42"><a href="#cb1-42" tabindex="-1"></a>  <span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;{model_name}.raw.osf-bainbridge-2021-s2-0.mapping2.feather&quot;</span>))</span>
@@ -1379,7 +1379,7 @@ item pair correlations</a></p>
 
 <div id="synthetic-reliabilities" class="section level2">
 <h2>Synthetic Reliabilities</h2>
-<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a>scales <span class="ot">&lt;-</span> <span class="fu">read_rds</span>(<span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;ignore.scales_with_alpha_se.rds&quot;</span>)))</span>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a>scales <span class="ot">&lt;-</span> <span class="fu">read_rds</span>(<span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;data/intermediate/scales_with_alpha_se.rds&quot;</span>)))</span>
 <span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a></span>
 <span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a></span>
 <span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a><span class="fu">source</span>(<span class="st">&quot;global_functions.R&quot;</span>)</span>
@@ -2094,8 +2094,8 @@ alphas.</p>
 
 <div id="synthetic-scale-correlations" class="section level2">
 <h2>Synthetic Scale Correlations</h2>
-<div class="sourceCode" id="cb49"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" tabindex="-1"></a>manifest_scores <span class="ot">=</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(<span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather&quot;</span>)))</span>
-<span id="cb49-2"><a href="#cb49-2" tabindex="-1"></a>pt_manifest_scores <span class="ot">=</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(<span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;ignore.{pretrained_model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather&quot;</span>)))</span>
+<div class="sourceCode" id="cb49"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" tabindex="-1"></a>manifest_scores <span class="ot">=</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(<span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;data/intermediate/{model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather&quot;</span>)))</span>
+<span id="cb49-2"><a href="#cb49-2" tabindex="-1"></a>pt_manifest_scores <span class="ot">=</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(<span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;data/intermediate/{pretrained_model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather&quot;</span>)))</span>
 <span id="cb49-3"><a href="#cb49-3" tabindex="-1"></a></span>
 <span id="cb49-4"><a href="#cb49-4" tabindex="-1"></a><span class="fu">n_distinct</span>(manifest_scores<span class="sc">$</span>scale_a)</span></code></pre></div>
 <pre><code>## [1] 112</code></pre>

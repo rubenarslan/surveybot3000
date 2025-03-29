@@ -26,6 +26,7 @@ output:
   - [Data in CSV format](rr_data.csv)
   - [Data in SAV format](rr_data.sav)
   - [Data in RDS format](rr_data.rds)
+  - [Documentation of data cleaning](https://synth-science.github.io/synth-rep/)
 - [Validation Study Results](validation_study.html)
   - [Interactive Item Plot (Registered Report)](2_interactive_item_plot_rr.html)
   - [Margin of error comparison](se_sample_size.html)

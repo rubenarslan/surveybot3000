@@ -47,9 +47,9 @@ pretrained_data_path = glue("./")
 set.seed(42)
 
 
-holdout <- arrow::read_feather(file = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))
+holdout <- arrow::read_feather(file = file.path(data_path, glue("data/intermediate/{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))
 
-pt_holdout <- arrow::read_feather(file = file.path(data_path, glue("ignore.{pretrained_model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))
+pt_holdout <- arrow::read_feather(file = file.path(data_path, glue("data/intermediate/{pretrained_model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))
 
 holdout_mapping_data = arrow::read_feather(
   file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.mapping2.feather"))
@@ -388,7 +388,7 @@ pt_plot_items
 ## Synthetic Reliabilities
 ```{r}
 
-scales <- read_rds(file = file.path(data_path, glue("ignore.scales_with_alpha_se.rds")))
+scales <- read_rds(file = file.path(data_path, glue("data/intermediate/scales_with_alpha_se.rds")))
 
 
 source("global_functions.R")
@@ -724,8 +724,8 @@ pt_plot_rels
 
 ## Synthetic Scale Correlations
 ```{r}
-manifest_scores = arrow::read_feather(file = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather")))
-pt_manifest_scores = arrow::read_feather(file = file.path(data_path, glue("ignore.{pretrained_model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather")))
+manifest_scores = arrow::read_feather(file = file.path(data_path, glue("data/intermediate/{model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather")))
+pt_manifest_scores = arrow::read_feather(file = file.path(data_path, glue("data/intermediate/{pretrained_model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather")))
 
 n_distinct(manifest_scores$scale_a)
 

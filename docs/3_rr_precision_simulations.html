@@ -562,7 +562,7 @@ correlations.</p>
 <div id="precision-simulation-for-synthetic-inter-item-correlations"
 class="section level2">
 <h2>Precision simulation for synthetic inter-item correlations</h2>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>holdout <span class="ot">&lt;-</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(<span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather&quot;</span>)))</span>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>holdout <span class="ot">&lt;-</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(<span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;data/intermediate/{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather&quot;</span>)))</span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a></span>
 <span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>holdout_mapping_data <span class="ot">=</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(</span>
 <span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>  <span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;{model_name}.raw.osf-bainbridge-2021-s2-0.mapping2.feather&quot;</span>))</span>
@@ -767,7 +767,7 @@ class="section level2">
 <div id="precision-simulation-for-synthetic-scale-correlations"
 class="section level2">
 <h2>Precision simulation for synthetic scale correlations</h2>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>manifest_scores <span class="ot">=</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(<span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather&quot;</span>)))</span>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>manifest_scores <span class="ot">=</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(<span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;data/intermediate/{model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather&quot;</span>)))</span>
 <span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a></span>
 <span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a></span>
 <span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>sim_results <span class="ot">&lt;-</span> <span class="fu">tibble</span>()</span>

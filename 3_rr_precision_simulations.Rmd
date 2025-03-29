@@ -58,7 +58,7 @@ planned_N <- 400
 
 ## Precision simulation for synthetic inter-item correlations
 ```{r}
-holdout <- arrow::read_feather(file = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))
+holdout <- arrow::read_feather(file = file.path(data_path, glue("data/intermediate/{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))
 
 holdout_mapping_data = arrow::read_feather(
   file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.mapping2.feather"))
@@ -233,7 +233,7 @@ sim_results %>% summarise(semi_latent_r = mean(est.std), mean_se = sqrt(mean(se^
 
 ## Precision simulation for synthetic scale correlations
 ```{r}
-manifest_scores = arrow::read_feather(file = file.path(data_path, glue("ignore.{model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather")))
+manifest_scores = arrow::read_feather(file = file.path(data_path, glue("data/intermediate/{model_name}.raw.osf-bainbridge-2021-s2-0.scale_correlations.feather")))
 
 
 sim_results <- tibble()

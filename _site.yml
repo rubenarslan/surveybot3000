@@ -40,4 +40,5 @@ output:
     self_contained: no
 exclude:
 - ignore
+- data
 

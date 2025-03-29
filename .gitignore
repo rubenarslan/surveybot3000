@@ -6,6 +6,6 @@
 ignore*
 ~$*
 docs/data*
-data/*
+data/dataverse/*
 data_synth*
 .lintr

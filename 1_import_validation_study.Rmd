@@ -106,7 +106,7 @@ rr_validation_machine_data <- rr_validation_machine_data %>%
   select(-embed_id)
   
 main_qs <- c("AAID", "PANAS", "PAQ", "PSS", "NEPS", "ULS", "FCV", "DAQ", "CESD", "HEXACO", "OCIR", "PTQ", "RAAS", "KSA", "SAS", "MFQ", "CQ", "OLBI", "UWES", "WGS")
-rr_validation_human_data = rio::import("../synth-rep-dataset/data/processed/sosci_labelled_with_exclusion_criteria.rds") %>% filter(included) %>% 
+rr_validation_human_data = rio::import("data/processed/sosci_labelled_with_exclusion_criteria.rds") %>% filter(included) %>% 
 	select(starts_with(main_qs)) %>% 
 	select(-ends_with("_R"))
 
@@ -137,11 +137,11 @@ scales %>% filter(number_of_items > 2) %>% tally()
 ```{r}
 rr_validation_item_pairs = join_pairwise_correlation(rr_validation_human_data, rr_validation_machine_data)
 
-arrow::write_feather(rr_validation_item_pairs, sink = file.path(data_path, glue("ignore.{model_name}.raw.validation-study-2024-11-01.item_correlations.feather")))
+arrow::write_feather(rr_validation_item_pairs, sink = file.path(data_path, glue("data/intermediate/{model_name}.raw.validation-study-2024-11-01.item_correlations.feather")))
 
 pt_rr_validation_item_pairs = join_pairwise_correlation(rr_validation_human_data, pt_rr_validation_machine_data)
 
-arrow::write_feather(pt_rr_validation_item_pairs, sink = file.path(data_path, glue("ignore.{pretrained_model_name}.raw.validation-study-2024-11-01.item_correlations.feather")))
+arrow::write_feather(pt_rr_validation_item_pairs, sink = file.path(data_path, glue("data/intermediate/{pretrained_model_name}.raw.validation-study-2024-11-01.item_correlations.feather")))
 ```
 
 
@@ -149,11 +149,11 @@ arrow::write_feather(pt_rr_validation_item_pairs, sink = file.path(data_path, gl
 ```{r}
 manifest_scores = predict_manifest_scores(rr_validation_human_data, rr_validation_machine_data, rr_validation_mapping_data, scales)
 
-arrow::write_feather(manifest_scores, sink = file.path(data_path, glue("ignore.{model_name}.raw.validation-study-2024-11-01.scale_correlations.feather")))
+arrow::write_feather(manifest_scores, sink = file.path(data_path, glue("data/intermediate/{model_name}.raw.validation-study-2024-11-01.scale_correlations.feather")))
 
 pt_manifest_scores = predict_manifest_scores(rr_validation_human_data, pt_rr_validation_machine_data, rr_validation_mapping_data, scales)
 
-arrow::write_feather(pt_manifest_scores, sink = file.path(data_path, glue("ignore.{pretrained_model_name}.raw.validation-study-2024-11-01.scale_correlations.feather")))
+arrow::write_feather(pt_manifest_scores, sink = file.path(data_path, glue("data/intermediate/{pretrained_model_name}.raw.validation-study-2024-11-01.scale_correlations.feather")))
 ```
 
 
@@ -192,7 +192,7 @@ random_scales <- bind_rows(random_scales) %>%
     ) %>% 
   ungroup()
 nrow(random_scales)
-write_rds(random_scales, file = file.path(data_path, glue("ignore.random_scales_rr.rds")))
+write_rds(random_scales, file = file.path(data_path, glue("data/intermediate/random_scales_rr.rds")))
 
 
 rr_validation_llm <- rr_validation_item_pairs %>%
@@ -258,6 +258,6 @@ scales <- scales %>%
     empirical_alpha_se = sd(rel_real$boot[,"raw_alpha"]),
   )
 
-write_rds(scales, file = file.path(data_path, glue("ignore.scales_with_alpha_se_rr.rds")))
+write_rds(scales, file = file.path(data_path, glue("data/intermediate/scales_with_alpha_se_rr.rds")))
 ```
 

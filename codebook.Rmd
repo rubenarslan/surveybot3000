@@ -13,7 +13,8 @@ output:
     latex_engine: xelatex
 ---
 
-Here, we're just setting a few options.
+More information about the data and the documented cleaning process can be found here
+https://synth-science.github.io/synth-rep/ 
 
 ```{r setup}
 knitr::opts_chunk$set(
@@ -33,9 +34,9 @@ library(codebook)
 library(haven)
 library(labelled)
 
-rr_human_data_with_reversed_items = rio::import("../synth-rep-dataset/data/processed/sosci_labelled.rds")
+rr_human_data_with_reversed_items = rio::import("data/processed/sosci_labelled.rds")
 reversed_items <- str_sub(names(rr_human_data_with_reversed_items)[str_detect(names(rr_human_data_with_reversed_items), "_R$")], 1, -3)
-rr_human_data_with_inclusion_criteria = rio::import("../synth-rep-dataset/data/processed/sosci_labelled_with_exclusion_criteria.rds")
+rr_human_data_with_inclusion_criteria = rio::import("data/processed/sosci_labelled_with_exclusion_criteria.rds")
 # setdiff(names(rr_human_data_with_inclusion_criteria), names(rr_human_data_with_reversed_items)) %>% dput()
 rr_human_data_with_inclusion_criteria <- rr_human_data_with_inclusion_criteria %>% select(one_of(c("CASE","even_odd", "psychant", 
 "psychsyn", "mahal_dist", 
