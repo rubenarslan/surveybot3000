@@ -2,7 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
-*.rds
 ignore*
 ~$*
 docs/data*
