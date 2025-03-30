@@ -34,7 +34,7 @@ library(cowplot)
 
 options(mc.cores = parallel::detectCores(), 
         brms.backend = "cmdstanr", 
-        brms.file_refit = "on_change",
+        brms.file_refit = "never",
         width = 6000)
 
 theme_set(theme_bw())
@@ -43,16 +43,16 @@ model_name = "ItemSimilarityTraining-20240502-trial12"
 #model_name = "item-similarity-20231018-122504"
 pretrained_model_name = "all-mpnet-base-v2"
 
-data_path = glue("./")
-pretrained_data_path = glue("./")
+data_path = glue("./data/intermediate/")
+pretrained_data_path = glue("./data/intermediate/")
 
 set.seed(42)
 source("global_functions.R")
 
 
-rr_validation <- arrow::read_feather(file = file.path(data_path, glue("data/intermediate/{model_name}.raw.validation-study-2024-11-01.item_correlations.feather")))
+rr_validation <- arrow::read_feather(file = file.path(data_path, glue("{model_name}.raw.validation-study-2024-11-01.item_correlations.feather")))
 
-pt_rr_validation <- arrow::read_feather(file = file.path(data_path, glue("data/intermediate/{pretrained_model_name}.raw.validation-study-2024-11-01.item_correlations.feather")))
+pt_rr_validation <- arrow::read_feather(file = file.path(data_path, glue("{pretrained_model_name}.raw.validation-study-2024-11-01.item_correlations.feather")))
 
 rr_validation_mapping_data = arrow::read_feather(
   file = file.path(data_path, glue("{model_name}.raw.validation-study-2024-11-01.mapping2.feather"))
@@ -73,7 +73,7 @@ N <- rr_validation_human_data %>% summarise_all(~ sum(!is.na(.))) %>% min()
 total_N <- nrow(rr_validation_human_data)
 
 mapping_data <- rr_validation_mapping_data
-items_by_scale <- 
+items_by_scale <- bind_rows(
   rr_validation_scales %>% select(-keyed) %>% filter(scale_1 == "") %>% left_join(mapping_data %>% select(-scale_1), by = c("instrument", "scale_0")),
   rr_validation_scales %>% select(-keyed) %>% filter(scale_1 != "") %>% left_join(mapping_data, by = c("instrument", "scale_0", "scale_1"))
 )
@@ -158,7 +158,7 @@ rm(epred_preds)
 accuracy_bayes_items <- by_draw %>% mean_hdci(latent_r)
 
 
-
+bind_rows(
   pt_r %>% 
     mutate(model = "pre-trained", kind = "manifest") %>% 
     select(model, kind, accuracy = estimate, conf.low, conf.high),
@@ -305,7 +305,7 @@ by_draw <- epred_preds %>% group_by(.draw) %>%
 
 accuracy_bayes_items_poly <- by_draw %>% mean_hdci(latent_r)
 
-
+bind_rows(
   accuracy_bayes_items %>% 
     mutate(model = "spline", kind = "latent outcome (Bayesian EIV)") %>% 
     select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper),
@@ -349,7 +349,7 @@ accuracy_within_domains %>%
 
 ##### Items from one domain correlated with items in other domain
 ```{r}
-accuracy_between_domains <- rr_validation_llm_domain %>% 
+accuracy_between_domains <- bind_rows(rr_validation_llm_domain %>% 
   filter(DomainA != DomainB),
   rr_validation_llm_domain %>% 
   filter(DomainA != DomainB) %>% 
@@ -365,7 +365,7 @@ accuracy_between_domains %>%
 ```{r}
 library(ggrepel)
 dodge <- 0.6
-
+bind_rows(
 within = accuracy_within_domains,
 across = accuracy_between_domains, .id = "kind") %>% 
   mutate(kind = fct_inorder(kind)) %>% 
@@ -393,7 +393,7 @@ ggsave("Figure_rr_domain.png", width = 6, height = 5)
 #### Accuracy by instrument
 
 ```{r}
-accuracy_between_instruments <- rr_validation_llm_domain %>% 
+accuracy_between_instruments <- bind_rows(rr_validation_llm_domain %>% 
   filter(InstrumentA != InstrumentB),
   rr_validation_llm_domain %>% 
   filter(InstrumentA != InstrumentB) %>% 
@@ -423,7 +423,7 @@ accuracy_within_instruments %>%
   rename(pt_accuracy = pt_cor) %>% 
   kable(digits = 2, caption = "Accuracy by instrument (within items belonging to the same instrument)")
 
-
+bind_rows(
 within = accuracy_within_instruments,
 across = accuracy_between_instruments, .id = "kind") %>% 
 ggplot(aes(x = instrument, r, ymin = conf.low, ymax = conf.high, shape = kind)) +
@@ -517,7 +517,7 @@ rr_validation_llm %>%
 
 ##### Top/bottom 20 items
 ```{r}
-by_item <- item_pair_table_numeric,
+by_item <- bind_rows(item_pair_table_numeric,
   item_pair_table_numeric %>% 
   select(-variable_1, -item_text_1) %>% 
   rename(variable_1 = variable_2, item_text_1 = item_text_2)) %>% 
@@ -525,7 +525,7 @@ by_item <- item_pair_table_numeric,
   summarise(mean_rmse = sqrt(mean((empirical_r - synthetic_r)^2))) %>% 
   arrange(mean_rmse)
 
-head(by_item, 20),
+bind_rows(head(by_item, 20),
 tail(by_item, 20)) %>% 
   kable(digits = 2, caption = "Top and bottom 20 items by RMSE")
 ```
@@ -639,12 +639,12 @@ cor_pos <- rr_validation_llm %>% filter(empirical_r > 0) %>%
 
 ggplot(rr_validation_llm, aes(abs(synthetic_r), abs(empirical_r), color = factor(sign(empirical_r)))) + 
   annotate("text", size = 3, x = 0, y = 0.98, vjust = 0, hjust = 0, label = with(cor_abs, { sprintf("accuracy absolute r = %.2f [%.2f;%.2f]", estimate, conf.low, conf.high) }), color = 'black') +
-  annotate("text", size = 3, x = 0, y = 0.9, vjust = 0, hjust = 0, label = with(cor_neg, { sprintf("accuracy negative r = %.2f [%.2f;%.2f]", estimate, conf.low, conf.high) }), color = "#36A") +
+  annotate("text", size = 3, x = 0, y = 0.9, vjust = 0, hjust = 0, label = with(cor_neg, { sprintf("accuracy negative r = %.2f [%.2f;%.2f]", estimate, conf.low, conf.high) }), color = "#3366AA") +
   annotate("text", size = 3, x = 0, y = 0.82, vjust = 0, hjust = 0, label = with(cor_pos, { sprintf("accuracy positive r = %.2f [%.2f;%.2f]", estimate, conf.low, conf.high) }), color = "#00A0B0") +
   geom_abline(linetype = "dashed") +
   geom_point( alpha = 0.1, size = 1) +
   geom_smooth(method = "lm") +
-  scale_color_manual("Sign of emp. r", values = c("1" = "#00A0B0", "-1" = "#36A")) +
+  scale_color_manual("Sign of emp. r", values = c("1" = "#00A0B0", "-1" = "#3366AA")) +
   xlab("Absolute synthetic inter-item correlation") + 
   ylab("Absolute empirical inter-item correlation") +
   theme_bw() +
@@ -681,7 +681,7 @@ manifest_and_latent_r <- function(data) {
     mutate(model = "fine-tuned", kind = "latent outcome (SEM)") %>% 
     select(model, kind, accuracy = est.std, 
            conf.low = ci.lower, conf.high = ci.upper) %>% 
-    
+    bind_rows(
       broom::tidy(cor.test(data$empirical_r, data$synthetic_r)) %>% 
                     mutate(kind = "manifest") %>% 
         rename(accuracy = estimate) %>% 
@@ -746,7 +746,7 @@ r_strict_reading_of_prereg <- rr_human_data_all %>%
       psychant_outlier = psychant > -0.4,
       not_us_citizen = Nationality != "United States"
       ) %>%
-    filter(if_all(c(longstring_outlier, mahal_dist_outlier, psychsyn_outlier, psychant_outlier, even_odd_outlier, not_us_citizen), ~ . == FALSE)) %>%
+    filter(if_all(c(longstring_outlier, `mahal_dist_outlier_.5`, psychsyn_outlier, psychant_outlier, even_odd_outlier, not_us_citizen), ~ . == FALSE)) %>%
   manifest_and_latent_r() %>% 
   mutate(`exclusion criteria` = "Strict preregistered criteria: <br>- odd-even r < mean + 0.2 * SD<br>- psychometric synonym r < .60<br>- psychometric antonym r > -0.40<br>- Mahalanobis distance < mean + 0.5 * SD<br>-Not US citizen")
 
@@ -799,7 +799,7 @@ r_main_approvals <- rr_human_data_all %>%
 r_adapted_reading_of_prereg <- rr_human_data_all %>% 
     mutate(psychsyn_outlier = psychsyn < 0.22,
       psychant_outlier = psychant > -0.03) %>%
-    filter(if_all(c(mahal_dist_outlier, psychsyn_outlier, psychant_outlier, even_odd_outlier), ~ . == FALSE)) %>%
+    filter(if_all(c(`mahal_dist_outlier_.5`, psychsyn_outlier, psychant_outlier, even_odd_outlier), ~ . == FALSE)) %>%
   manifest_and_latent_r() %>% 
   mutate(`exclusion criteria` = "Corrected prereg criteria:<br>- odd-even r < mean + 0.2 * SD,<br>- psychometric synonym r < .22,<br> - psychometric antonym r > -0.03, <br>- Mahalanobis distance < mean + 0.5 * SD")
 ```
@@ -808,7 +808,7 @@ r_adapted_reading_of_prereg <- rr_human_data_all %>%
 The manifest accuracy is expected to decrease slightly with sample size because it is attenuated by sampling error in the empirical correlations. The latent accuracy should only grow more uncertain with decreased sample size.
 
 ```{r}
-exclusion_criteria <- 
+exclusion_criteria <- bind_rows(
   r_all, r_main, r_strict_reading_of_prereg, r_adapted_reading_of_prereg, 
   r_goldammer_1, r_goldammer_2, r_goldammer_3, r_main_us, r_main_approvals,
   r_main_first_450
@@ -831,17 +831,17 @@ ggplot(aes(x = `exclusion criteria`, accuracy, ymin = conf.low, ymax = conf.high
 Below, we import our search results of the SBERT training corpus. We identify validation study items with matches, investigate these matches and tabulate accuracy without potentially leaked items.
 
 ```{r}
-leaked <- rio::import("data/search_results.parquet") %>% 
+leaked <- rio::import("data/intermediate/search_results.parquet") %>% 
   mutate(item_text = str_to_lower(item_text))
 leaked_items <- leaked %>% group_by(item_text) %>% summarise(n = n())
 
 
-item_pair_table <- item_pair_table %>% 
+item_pair_table_l <- item_pair_table_numeric %>% 
   mutate(item_text_1l = str_to_lower(item_text_1),
          item_text_2l = str_to_lower(item_text_2))
 
-items <- item_pair_table %>% select(Instrument = InstrumentA, item_textl = item_text_1l),
-                   item_pair_table %>% select(Instrument = InstrumentB, item_textl = item_text_2l)) %>% 
+items <- bind_rows(item_pair_table_l %>% select(Instrument = InstrumentA, item_textl = item_text_1l),
+                   item_pair_table_l %>% select(Instrument = InstrumentB, item_textl = item_text_2l)) %>% 
   distinct()
 
 # items %>% inner_join(leaked, by = c("item_textl" = "item_text")) %>% View
@@ -856,7 +856,7 @@ leaked_items_validation %>% group_by(Instrument) %>%
   arrange(percentage) %>% 
   kable(caption = "Number and percent of items leaked per instrument", digits = 0)
 
-rr_validation_llm_leakage <- item_pair_table %>% 
+rr_validation_llm_leakage <- item_pair_table_l %>% 
   left_join(leaked_items_validation %>% rename(n_1 = n, item_text_1l = item_text), by = "item_text_1l") %>% 
   left_join(leaked_items_validation %>% rename(n_2 = n, item_text_2l = item_text), by = "item_text_2l")
 
@@ -889,7 +889,7 @@ rr_validation_llm_leakage %>%
 
 ## Synthetic Reliabilities
 ```{r}
-scales <- readRDS(file = file.path(data_path, glue("data/intermediate/scales_with_alpha_se_rr.rds")))
+scales <- readRDS(file = file.path(data_path, glue("scales_with_alpha_se_rr.rds")))
 real_scales <- scales %>% filter(type == "real")
 scales <- scales %>% filter(number_of_items >= 3)
 ```
@@ -956,7 +956,7 @@ by_draw <- epred_preds %>% group_by(.draw) %>%
 
 accuracy_bayes_rels <- by_draw %>% mean_hdci(latent_r)
 
-
+bind_rows(
   pt_r %>% 
     mutate(model = "pre-trained", kind = "manifest") %>% 
     select(model, kind, accuracy = estimate, conf.low, conf.high),
@@ -1181,7 +1181,7 @@ s1_plot_rels
 ```
 
 ```{r}
-
+bind_rows(
   r %>% 
     mutate(model = "fine-tuned", kind = "manifest") %>% 
     select(model, kind, accuracy = estimate, conf.low, conf.high),
@@ -1261,8 +1261,8 @@ pt_plot_rels
 
 ## Synthetic Scale Correlations
 ```{r}
-manifest_scores = arrow::read_feather(file = file.path(data_path, glue("data/intermediate/{model_name}.raw.validation-study-2024-11-01.scale_correlations.feather")))
-pt_manifest_scores = arrow::read_feather(file = file.path(data_path, glue("data/intermediate/{pretrained_model_name}.raw.validation-study-2024-11-01.scale_correlations.feather")))
+manifest_scores = arrow::read_feather(file = file.path(data_path, glue("{model_name}.raw.validation-study-2024-11-01.scale_correlations.feather")))
+pt_manifest_scores = arrow::read_feather(file = file.path(data_path, glue("{pretrained_model_name}.raw.validation-study-2024-11-01.scale_correlations.feather")))
 
 manifest_scores <- manifest_scores %>%
  left_join(real_scales, by = c("scale_a" = "scale")) %>%
@@ -1339,7 +1339,7 @@ by_draw <- epred_preds %>% group_by(.draw) %>%
 
 accuracy_bayes_scales <- by_draw %>% mean_hdci(latent_r)
 
-
+bind_rows(
   pt_r %>% 
     mutate(model = "pre-trained", kind = "manifest") %>% 
     select(model, kind, accuracy = estimate, conf.low, conf.high),
@@ -1483,7 +1483,7 @@ by_draw <- epred_preds %>% group_by(.draw) %>%
 
 accuracy_bayes_scales_poly <- by_draw %>% mean_hdci(latent_r)
 
-
+bind_rows(
   accuracy_bayes_scales %>% 
     mutate(model = "spline", kind = "latent outcome (Bayesian EIV)") %>% 
     select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper),
@@ -1535,7 +1535,7 @@ real_scales %>% ungroup() %>%
 r_2item <- broom::tidy(cor.test(manifest_scores_all$empirical_r, manifest_scores_all$synthetic_r))
 pt_r_2item <- broom::tidy(cor.test(pt_manifest_scores_all$empirical_r, pt_manifest_scores_all$synthetic_r))
 
-
+bind_rows(
   pt_r %>% 
     mutate(model = "pre-trained", kind = "manifest") %>% 
     select(model, kind, accuracy = estimate, conf.low, conf.high) %>% 
