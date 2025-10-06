@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+
+<meta name="date" content="2025-10-06" />
+
+<title>Pellert et al. Method: Mean-Centered Embeddings</title>
+
+<script src="site_libs/header-attrs-2.29/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/paper.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<script src="site_libs/navigation-1.1/sourceembed.js"></script>
+<link href="site_libs/font-awesome-6.4.2/css/all.min.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet" />
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  { color: #cccccc; background-color: #303030; }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ffcfaf; } /* Alert */
+code span.an { color: #7f9f7f; font-weight: bold; } /* Annotation */
+code span.at { } /* Attribute */
+code span.bn { color: #dca3a3; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #f0dfaf; } /* ControlFlow */
+code span.ch { color: #dca3a3; } /* Char */
+code span.cn { color: #dca3a3; font-weight: bold; } /* Constant */
+code span.co { color: #7f9f7f; } /* Comment */
+code span.cv { color: #7f9f7f; font-weight: bold; } /* CommentVar */
+code span.do { color: #7f9f7f; } /* Documentation */
+code span.dt { color: #dfdfbf; } /* DataType */
+code span.dv { color: #dcdccc; } /* DecVal */
+code span.er { color: #c3bf9f; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #c0bed1; } /* Float */
+code span.fu { color: #efef8f; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #7f9f7f; font-weight: bold; } /* Information */
+code span.kw { color: #f0dfaf; } /* Keyword */
+code span.op { color: #f0efd0; } /* Operator */
+code span.ot { color: #efef8f; } /* Other */
+code span.pp { color: #ffcfaf; font-weight: bold; } /* Preprocessor */
+code span.sc { color: #dca3a3; } /* SpecialChar */
+code span.ss { color: #cc9393; } /* SpecialString */
+code span.st { color: #cc9393; } /* String */
+code span.va { } /* Variable */
+code span.vs { color: #cc9393; } /* VerbatimString */
+code span.wa { color: #7f9f7f; font-weight: bold; } /* Warning */
+
+.sourceCode .row {
+  width: 100%;
+}
+.sourceCode {
+  overflow-x: auto;
+}
+.code-folding-btn {
+  margin-right: -30px;
+}
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+<style type="text/css">
+#rmd-source-code {
+  display: none;
+}
+</style>
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">SurveyBot3000</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Overview</a>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    Pilot Study
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="1_vector_to_cosine.html">Import and prepare data</a>
+    </li>
+    <li>
+      <a href="pilot_study.html">Pilot Study Results</a>
+    </li>
+    <li>
+      <a href="2_interactive_item_plot.html">Interactive Item Plot</a>
+    </li>
+  </ul>
+</li>
+<li>
+  <a href="3_rr_precision_simulations.html">RR Precision Simulations</a>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    Validation Study
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="1_import_validation_study.html">Import and prepare data</a>
+    </li>
+    <li>
+      <a href="codebook.html">Codebook</a>
+    </li>
+    <li>
+      <a href="validation_study.html">Validation Study Results</a>
+    </li>
+    <li>
+      <a href="2_interactive_item_plot_rr.html">Interactive Item Plot (RR)</a>
+    </li>
+  </ul>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="https://github.com/synth-science/surveybot3000">
+    <span class="fa fa-github"></span>
+     
+    
+  </a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+<li role="separator" class="divider"></li>
+<li><a id="rmd-download-source" href="#">Download Rmd</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">Pellert et al. Method: Mean-Centered
+Embeddings</h1>
+<h4 class="date">2025-10-06</h4>
+
+</div>
+
+
+<p>This document implements the method suggested by Pellert et al. for
+removing common linguistic features by subtracting the mean embedding
+vector from each item embedding.</p>
+<div id="load-data" class="section level2">
+<h2>Load Data</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="co"># Load human data</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>rr_validation_human_data <span class="ot">=</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>  <span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;{model_name}.raw.validation-study-2024-11-01.human.feather&quot;</span>))</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>)</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="co"># Load mapping data</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>rr_validation_mapping_data <span class="ot">=</span> arrow<span class="sc">::</span><span class="fu">read_feather</span>(</span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>  <span class="at">file =</span> <span class="fu">file.path</span>(data_path, <span class="fu">glue</span>(<span class="st">&quot;{model_name}.raw.validation-study-2024-11-01.mapping2.feather&quot;</span>))</span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>)</span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a><span class="co"># Load pre-trained model embeddings</span></span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>pt_rr_validation_machine_data <span class="ot">=</span> rio<span class="sc">::</span><span class="fu">import</span>(<span class="st">&quot;https://github.com/synth-science/surveybot3000/raw/refs/heads/main/validation_study/embeddings_all-mpnet-base-v2.feather&quot;</span>)</span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>pt_rr_validation_machine_data <span class="ot">&lt;-</span> pt_rr_validation_machine_data <span class="sc">%&gt;%</span> </span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>  <span class="fu">rowwise</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">embed_id =</span> <span class="fu">list</span>(<span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(embeddings))) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>  <span class="fu">unnest</span>(<span class="at">cols =</span> <span class="fu">c</span>(embeddings, embed_id)) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>item) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> id, <span class="at">values_from =</span> embeddings) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>embed_id)</span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a></span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a><span class="co"># Load fine-tuned model embeddings</span></span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a>rr_validation_machine_data <span class="ot">=</span> rio<span class="sc">::</span><span class="fu">import</span>(<span class="st">&quot;https://github.com/synth-science/surveybot3000/raw/refs/heads/main/validation_study/embeddings_surveybot3000.feather&quot;</span>)</span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a>rr_validation_machine_data <span class="ot">&lt;-</span> rr_validation_machine_data <span class="sc">%&gt;%</span> </span>
+<span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a>  <span class="fu">rowwise</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb1-25"><a href="#cb1-25" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">embed_id =</span> <span class="fu">list</span>(<span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(embeddings))) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-26"><a href="#cb1-26" tabindex="-1"></a>  <span class="fu">unnest</span>(<span class="at">cols =</span> <span class="fu">c</span>(embeddings, embed_id)) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-27"><a href="#cb1-27" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>item) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-28"><a href="#cb1-28" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> id, <span class="at">values_from =</span> embeddings) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-29"><a href="#cb1-29" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>embed_id)</span>
+<span id="cb1-30"><a href="#cb1-30" tabindex="-1"></a></span>
+<span id="cb1-31"><a href="#cb1-31" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Loaded embeddings:</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>## Loaded embeddings:</code></pre>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Pre-trained dimensions:&quot;</span>, <span class="fu">nrow</span>(pt_rr_validation_machine_data), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Pre-trained dimensions: 768</code></pre>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Pre-trained items:&quot;</span>, <span class="fu">ncol</span>(pt_rr_validation_machine_data), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Pre-trained items: 246</code></pre>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Fine-tuned dimensions:&quot;</span>, <span class="fu">nrow</span>(rr_validation_machine_data), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Fine-tuned dimensions: 768</code></pre>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Fine-tuned items:&quot;</span>, <span class="fu">ncol</span>(rr_validation_machine_data), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Fine-tuned items: 246</code></pre>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Human data respondents:&quot;</span>, <span class="fu">nrow</span>(rr_validation_human_data), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Human data respondents: 387</code></pre>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Human data items:&quot;</span>, <span class="fu">ncol</span>(rr_validation_human_data), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Human data items: 246</code></pre>
+</div>
+<div id="method-mean-centered-embeddings" class="section level2">
+<h2>Method: Mean-Centered Embeddings</h2>
+<p>Following Pellert et al., we compute the mean embedding across all
+items (the “questionnaire embedding”) and subtract it from each item
+embedding: <span class="math inline">\(\mathbf{y}_i -
+\bar{\mathbf{y}}\)</span> for item <span
+class="math inline">\(i\)</span>, where <span
+class="math inline">\(\bar{\mathbf{y}} = \frac{1}{n} \sum_{i=1}^{n}
+\mathbf{y}_i\)</span>.</p>
+<p>We implement two variants: 1. <strong>Global centering</strong>:
+Subtract the mean across all items 2. <strong>Per-instrument
+centering</strong>: Subtract the mean within each
+questionnaire/instrument (as Pellert et al. actually did)</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="co"># Function to center embeddings by subtracting the mean</span></span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a>center_embeddings_global <span class="ot">&lt;-</span> <span class="cf">function</span>(embedding_matrix) {</span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>  <span class="co"># embedding_matrix: rows = dimensions, columns = items</span></span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>  <span class="co"># Compute mean across all items (row means)</span></span>
+<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a>  mean_embedding <span class="ot">&lt;-</span> <span class="fu">rowMeans</span>(embedding_matrix, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a>  </span>
+<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a>  <span class="co"># Subtract mean from each item</span></span>
+<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a>  centered <span class="ot">&lt;-</span> <span class="fu">sweep</span>(embedding_matrix, <span class="dv">1</span>, mean_embedding, <span class="st">&quot;-&quot;</span>)</span>
+<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a>  </span>
+<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a>  <span class="fu">return</span>(centered)</span>
+<span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a>}</span>
+<span id="cb15-12"><a href="#cb15-12" tabindex="-1"></a></span>
+<span id="cb15-13"><a href="#cb15-13" tabindex="-1"></a><span class="co"># Function to center embeddings per instrument</span></span>
+<span id="cb15-14"><a href="#cb15-14" tabindex="-1"></a>center_embeddings_by_instrument <span class="ot">&lt;-</span> <span class="cf">function</span>(embedding_matrix, mapping_data) {</span>
+<span id="cb15-15"><a href="#cb15-15" tabindex="-1"></a>  <span class="co"># embedding_matrix: rows = dimensions, columns = items</span></span>
+<span id="cb15-16"><a href="#cb15-16" tabindex="-1"></a>  <span class="co"># mapping_data: dataframe with &#39;variable&#39; and &#39;instrument&#39; columns</span></span>
+<span id="cb15-17"><a href="#cb15-17" tabindex="-1"></a>  </span>
+<span id="cb15-18"><a href="#cb15-18" tabindex="-1"></a>  centered <span class="ot">&lt;-</span> embedding_matrix</span>
+<span id="cb15-19"><a href="#cb15-19" tabindex="-1"></a>  </span>
+<span id="cb15-20"><a href="#cb15-20" tabindex="-1"></a>  <span class="co"># Get unique instruments</span></span>
+<span id="cb15-21"><a href="#cb15-21" tabindex="-1"></a>  instruments <span class="ot">&lt;-</span> <span class="fu">unique</span>(mapping_data<span class="sc">$</span>instrument)</span>
+<span id="cb15-22"><a href="#cb15-22" tabindex="-1"></a>  </span>
+<span id="cb15-23"><a href="#cb15-23" tabindex="-1"></a>  <span class="cf">for</span> (instr <span class="cf">in</span> instruments) {</span>
+<span id="cb15-24"><a href="#cb15-24" tabindex="-1"></a>    <span class="co"># Get items belonging to this instrument</span></span>
+<span id="cb15-25"><a href="#cb15-25" tabindex="-1"></a>    item_ids <span class="ot">&lt;-</span> mapping_data <span class="sc">%&gt;%</span> </span>
+<span id="cb15-26"><a href="#cb15-26" tabindex="-1"></a>      <span class="fu">filter</span>(instrument <span class="sc">==</span> instr) <span class="sc">%&gt;%</span> </span>
+<span id="cb15-27"><a href="#cb15-27" tabindex="-1"></a>      <span class="fu">pull</span>(variable)</span>
+<span id="cb15-28"><a href="#cb15-28" tabindex="-1"></a>    </span>
+<span id="cb15-29"><a href="#cb15-29" tabindex="-1"></a>    <span class="co"># Find which columns correspond to these items</span></span>
+<span id="cb15-30"><a href="#cb15-30" tabindex="-1"></a>    item_cols <span class="ot">&lt;-</span> <span class="fu">which</span>(<span class="fu">colnames</span>(embedding_matrix) <span class="sc">%in%</span> item_ids)</span>
+<span id="cb15-31"><a href="#cb15-31" tabindex="-1"></a>    </span>
+<span id="cb15-32"><a href="#cb15-32" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">length</span>(item_cols) <span class="sc">&gt;</span> <span class="dv">0</span>) {</span>
+<span id="cb15-33"><a href="#cb15-33" tabindex="-1"></a>      <span class="co"># Compute mean embedding for this instrument</span></span>
+<span id="cb15-34"><a href="#cb15-34" tabindex="-1"></a>      instr_mean <span class="ot">&lt;-</span> <span class="fu">rowMeans</span>(embedding_matrix[, item_cols, <span class="at">drop =</span> <span class="cn">FALSE</span>], <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb15-35"><a href="#cb15-35" tabindex="-1"></a>      </span>
+<span id="cb15-36"><a href="#cb15-36" tabindex="-1"></a>      <span class="co"># Subtract instrument mean from each item in this instrument</span></span>
+<span id="cb15-37"><a href="#cb15-37" tabindex="-1"></a>      centered[, item_cols] <span class="ot">&lt;-</span> <span class="fu">sweep</span>(embedding_matrix[, item_cols, <span class="at">drop =</span> <span class="cn">FALSE</span>], </span>
+<span id="cb15-38"><a href="#cb15-38" tabindex="-1"></a>                                     <span class="dv">1</span>, instr_mean, <span class="st">&quot;-&quot;</span>)</span>
+<span id="cb15-39"><a href="#cb15-39" tabindex="-1"></a>    }</span>
+<span id="cb15-40"><a href="#cb15-40" tabindex="-1"></a>  }</span>
+<span id="cb15-41"><a href="#cb15-41" tabindex="-1"></a>  </span>
+<span id="cb15-42"><a href="#cb15-42" tabindex="-1"></a>  <span class="fu">return</span>(centered)</span>
+<span id="cb15-43"><a href="#cb15-43" tabindex="-1"></a>}</span>
+<span id="cb15-44"><a href="#cb15-44" tabindex="-1"></a></span>
+<span id="cb15-45"><a href="#cb15-45" tabindex="-1"></a><span class="co"># Global centering</span></span>
+<span id="cb15-46"><a href="#cb15-46" tabindex="-1"></a>pt_centered_global <span class="ot">&lt;-</span> <span class="fu">center_embeddings_global</span>(pt_rr_validation_machine_data)</span>
+<span id="cb15-47"><a href="#cb15-47" tabindex="-1"></a>ft_centered_global <span class="ot">&lt;-</span> <span class="fu">center_embeddings_global</span>(rr_validation_machine_data)</span>
+<span id="cb15-48"><a href="#cb15-48" tabindex="-1"></a></span>
+<span id="cb15-49"><a href="#cb15-49" tabindex="-1"></a><span class="co"># Per-instrument centering</span></span>
+<span id="cb15-50"><a href="#cb15-50" tabindex="-1"></a>pt_centered_instrument <span class="ot">&lt;-</span> <span class="fu">center_embeddings_by_instrument</span>(pt_rr_validation_machine_data, </span>
+<span id="cb15-51"><a href="#cb15-51" tabindex="-1"></a>                                                          rr_validation_mapping_data)</span>
+<span id="cb15-52"><a href="#cb15-52" tabindex="-1"></a>ft_centered_instrument <span class="ot">&lt;-</span> <span class="fu">center_embeddings_by_instrument</span>(rr_validation_machine_data,</span>
+<span id="cb15-53"><a href="#cb15-53" tabindex="-1"></a>                                                          rr_validation_mapping_data)</span>
+<span id="cb15-54"><a href="#cb15-54" tabindex="-1"></a></span>
+<span id="cb15-55"><a href="#cb15-55" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Centered embeddings created</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>## Centered embeddings created</code></pre>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Global centering:</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>## Global centering:</code></pre>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Pre-trained: mean of means =&quot;</span>, <span class="fu">mean</span>(<span class="fu">rowMeans</span>(pt_centered_global)), <span class="st">&quot;(should be ~0)</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Pre-trained: mean of means = 1.881672e-19 (should be ~0)</code></pre>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Fine-tuned: mean of means =&quot;</span>, <span class="fu">mean</span>(<span class="fu">rowMeans</span>(ft_centered_global)), <span class="st">&quot;(should be ~0)</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Fine-tuned: mean of means = 1.643278e-21 (should be ~0)</code></pre>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;</span><span class="sc">\n</span><span class="st">Per-instrument centering:</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>## 
+## Per-instrument centering:</code></pre>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Pre-trained: overall mean =&quot;</span>, <span class="fu">mean</span>(<span class="fu">rowMeans</span>(pt_centered_instrument)), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Pre-trained: overall mean = 1.86577e-20</code></pre>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Fine-tuned: overall mean =&quot;</span>, <span class="fu">mean</span>(<span class="fu">rowMeans</span>(ft_centered_instrument)), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Fine-tuned: overall mean = 2.200241e-20</code></pre>
+<div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Number of instruments:&quot;</span>, <span class="fu">n_distinct</span>(rr_validation_mapping_data<span class="sc">$</span>instrument), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Number of instruments: 20</code></pre>
+</div>
+<div id="compute-correlations" class="section level2">
+<h2>Compute Correlations</h2>
+<p>Now we compute pairwise correlations (cosine similarities) using the
+original, globally-centered, and per-instrument-centered embeddings.</p>
+<div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" tabindex="-1"></a><span class="co"># Original correlations</span></span>
+<span id="cb31-2"><a href="#cb31-2" tabindex="-1"></a>pt_original_pairs <span class="ot">&lt;-</span> <span class="fu">join_pairwise_correlation</span>(rr_validation_human_data, pt_rr_validation_machine_data)</span>
+<span id="cb31-3"><a href="#cb31-3" tabindex="-1"></a>ft_original_pairs <span class="ot">&lt;-</span> <span class="fu">join_pairwise_correlation</span>(rr_validation_human_data, rr_validation_machine_data)</span>
+<span id="cb31-4"><a href="#cb31-4" tabindex="-1"></a></span>
+<span id="cb31-5"><a href="#cb31-5" tabindex="-1"></a><span class="co"># Globally mean-centered correlations</span></span>
+<span id="cb31-6"><a href="#cb31-6" tabindex="-1"></a>pt_centered_global_pairs <span class="ot">&lt;-</span> <span class="fu">join_pairwise_correlation</span>(rr_validation_human_data, <span class="fu">as.data.frame</span>(pt_centered_global))</span>
+<span id="cb31-7"><a href="#cb31-7" tabindex="-1"></a>ft_centered_global_pairs <span class="ot">&lt;-</span> <span class="fu">join_pairwise_correlation</span>(rr_validation_human_data, <span class="fu">as.data.frame</span>(ft_centered_global))</span>
+<span id="cb31-8"><a href="#cb31-8" tabindex="-1"></a></span>
+<span id="cb31-9"><a href="#cb31-9" tabindex="-1"></a><span class="co"># Per-instrument mean-centered correlations</span></span>
+<span id="cb31-10"><a href="#cb31-10" tabindex="-1"></a>pt_centered_instrument_pairs <span class="ot">&lt;-</span> <span class="fu">join_pairwise_correlation</span>(rr_validation_human_data, <span class="fu">as.data.frame</span>(pt_centered_instrument))</span>
+<span id="cb31-11"><a href="#cb31-11" tabindex="-1"></a>ft_centered_instrument_pairs <span class="ot">&lt;-</span> <span class="fu">join_pairwise_correlation</span>(rr_validation_human_data, <span class="fu">as.data.frame</span>(ft_centered_instrument))</span>
+<span id="cb31-12"><a href="#cb31-12" tabindex="-1"></a></span>
+<span id="cb31-13"><a href="#cb31-13" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Computed pairwise correlations:</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>## Computed pairwise correlations:</code></pre>
+<div class="sourceCode" id="cb33"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Number of item pairs:&quot;</span>, <span class="fu">nrow</span>(pt_original_pairs), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Number of item pairs: 30135</code></pre>
+</div>
+<div id="results-accuracy-comparison" class="section level2">
+<h2>Results: Accuracy Comparison</h2>
+<div class="sourceCode" id="cb35"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" tabindex="-1"></a><span class="co"># Pre-trained model</span></span>
+<span id="cb35-2"><a href="#cb35-2" tabindex="-1"></a>pt_original_accuracy <span class="ot">&lt;-</span> broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">cor.test</span>(pt_original_pairs<span class="sc">$</span>empirical_r, pt_original_pairs<span class="sc">$</span>synthetic_r))</span>
+<span id="cb35-3"><a href="#cb35-3" tabindex="-1"></a>pt_centered_global_accuracy <span class="ot">&lt;-</span> broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">cor.test</span>(pt_centered_global_pairs<span class="sc">$</span>empirical_r, pt_centered_global_pairs<span class="sc">$</span>synthetic_r))</span>
+<span id="cb35-4"><a href="#cb35-4" tabindex="-1"></a>pt_centered_instrument_accuracy <span class="ot">&lt;-</span> broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">cor.test</span>(pt_centered_instrument_pairs<span class="sc">$</span>empirical_r, pt_centered_instrument_pairs<span class="sc">$</span>synthetic_r))</span>
+<span id="cb35-5"><a href="#cb35-5" tabindex="-1"></a></span>
+<span id="cb35-6"><a href="#cb35-6" tabindex="-1"></a><span class="co"># Fine-tuned model</span></span>
+<span id="cb35-7"><a href="#cb35-7" tabindex="-1"></a>ft_original_accuracy <span class="ot">&lt;-</span> broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">cor.test</span>(ft_original_pairs<span class="sc">$</span>empirical_r, ft_original_pairs<span class="sc">$</span>synthetic_r))</span>
+<span id="cb35-8"><a href="#cb35-8" tabindex="-1"></a>ft_centered_global_accuracy <span class="ot">&lt;-</span> broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">cor.test</span>(ft_centered_global_pairs<span class="sc">$</span>empirical_r, ft_centered_global_pairs<span class="sc">$</span>synthetic_r))</span>
+<span id="cb35-9"><a href="#cb35-9" tabindex="-1"></a>ft_centered_instrument_accuracy <span class="ot">&lt;-</span> broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">cor.test</span>(ft_centered_instrument_pairs<span class="sc">$</span>empirical_r, ft_centered_instrument_pairs<span class="sc">$</span>synthetic_r))</span>
+<span id="cb35-10"><a href="#cb35-10" tabindex="-1"></a></span>
+<span id="cb35-11"><a href="#cb35-11" tabindex="-1"></a><span class="co"># Create comparison table</span></span>
+<span id="cb35-12"><a href="#cb35-12" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
+<span id="cb35-13"><a href="#cb35-13" tabindex="-1"></a>  pt_original_accuracy <span class="sc">%&gt;%</span> </span>
+<span id="cb35-14"><a href="#cb35-14" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">model =</span> <span class="st">&quot;Pre-trained (SBERT)&quot;</span>, <span class="at">method =</span> <span class="st">&quot;Original&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb35-15"><a href="#cb35-15" tabindex="-1"></a>    <span class="fu">select</span>(model, method, <span class="at">accuracy =</span> estimate, conf.low, conf.high),</span>
+<span id="cb35-16"><a href="#cb35-16" tabindex="-1"></a>  pt_centered_global_accuracy <span class="sc">%&gt;%</span> </span>
+<span id="cb35-17"><a href="#cb35-17" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">model =</span> <span class="st">&quot;Pre-trained (SBERT)&quot;</span>, <span class="at">method =</span> <span class="st">&quot;Global mean-centered&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb35-18"><a href="#cb35-18" tabindex="-1"></a>    <span class="fu">select</span>(model, method, <span class="at">accuracy =</span> estimate, conf.low, conf.high),</span>
+<span id="cb35-19"><a href="#cb35-19" tabindex="-1"></a>  pt_centered_instrument_accuracy <span class="sc">%&gt;%</span> </span>
+<span id="cb35-20"><a href="#cb35-20" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">model =</span> <span class="st">&quot;Pre-trained (SBERT)&quot;</span>, <span class="at">method =</span> <span class="st">&quot;Per-instrument mean-centered&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb35-21"><a href="#cb35-21" tabindex="-1"></a>    <span class="fu">select</span>(model, method, <span class="at">accuracy =</span> estimate, conf.low, conf.high),</span>
+<span id="cb35-22"><a href="#cb35-22" tabindex="-1"></a>  ft_original_accuracy <span class="sc">%&gt;%</span> </span>
+<span id="cb35-23"><a href="#cb35-23" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">model =</span> <span class="st">&quot;Fine-tuned (SurveyBot3000)&quot;</span>, <span class="at">method =</span> <span class="st">&quot;Original&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb35-24"><a href="#cb35-24" tabindex="-1"></a>    <span class="fu">select</span>(model, method, <span class="at">accuracy =</span> estimate, conf.low, conf.high),</span>
+<span id="cb35-25"><a href="#cb35-25" tabindex="-1"></a>  ft_centered_global_accuracy <span class="sc">%&gt;%</span> </span>
+<span id="cb35-26"><a href="#cb35-26" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">model =</span> <span class="st">&quot;Fine-tuned (SurveyBot3000)&quot;</span>, <span class="at">method =</span> <span class="st">&quot;Global mean-centered&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb35-27"><a href="#cb35-27" tabindex="-1"></a>    <span class="fu">select</span>(model, method, <span class="at">accuracy =</span> estimate, conf.low, conf.high),</span>
+<span id="cb35-28"><a href="#cb35-28" tabindex="-1"></a>  ft_centered_instrument_accuracy <span class="sc">%&gt;%</span> </span>
+<span id="cb35-29"><a href="#cb35-29" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">model =</span> <span class="st">&quot;Fine-tuned (SurveyBot3000)&quot;</span>, <span class="at">method =</span> <span class="st">&quot;Per-instrument mean-centered&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb35-30"><a href="#cb35-30" tabindex="-1"></a>    <span class="fu">select</span>(model, method, <span class="at">accuracy =</span> estimate, conf.low, conf.high)</span>
+<span id="cb35-31"><a href="#cb35-31" tabindex="-1"></a>)</span>
+<span id="cb35-32"><a href="#cb35-32" tabindex="-1"></a></span>
+<span id="cb35-33"><a href="#cb35-33" tabindex="-1"></a><span class="fu">kable</span>(results, <span class="at">digits =</span> <span class="dv">3</span>, <span class="at">caption =</span> <span class="st">&quot;Manifest accuracy (Pearson r) between synthetic and empirical item correlations&quot;</span>)</span></code></pre></div>
+<table>
+<caption>Manifest accuracy (Pearson r) between synthetic and empirical
+item correlations</caption>
+<colgroup>
+<col width="32%" />
+<col width="34%" />
+<col width="10%" />
+<col width="10%" />
+<col width="11%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">model</th>
+<th align="left">method</th>
+<th align="right">accuracy</th>
+<th align="right">conf.low</th>
+<th align="right">conf.high</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Pre-trained (SBERT)</td>
+<td align="left">Original</td>
+<td align="right">0.302</td>
+<td align="right">0.291</td>
+<td align="right">0.312</td>
+</tr>
+<tr class="even">
+<td align="left">Pre-trained (SBERT)</td>
+<td align="left">Global mean-centered</td>
+<td align="right">0.340</td>
+<td align="right">0.329</td>
+<td align="right">0.349</td>
+</tr>
+<tr class="odd">
+<td align="left">Pre-trained (SBERT)</td>
+<td align="left">Per-instrument mean-centered</td>
+<td align="right">0.137</td>
+<td align="right">0.126</td>
+<td align="right">0.148</td>
+</tr>
+<tr class="even">
+<td align="left">Fine-tuned (SurveyBot3000)</td>
+<td align="left">Original</td>
+<td align="right">0.570</td>
+<td align="right">0.563</td>
+<td align="right">0.578</td>
+</tr>
+<tr class="odd">
+<td align="left">Fine-tuned (SurveyBot3000)</td>
+<td align="left">Global mean-centered</td>
+<td align="right">0.551</td>
+<td align="right">0.543</td>
+<td align="right">0.559</td>
+</tr>
+<tr class="even">
+<td align="left">Fine-tuned (SurveyBot3000)</td>
+<td align="left">Per-instrument mean-centered</td>
+<td align="right">0.295</td>
+<td align="right">0.285</td>
+<td align="right">0.306</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="interpretation" class="section level2">
+<h2>Interpretation</h2>
+<div class="sourceCode" id="cb36"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" tabindex="-1"></a><span class="co"># Calculate improvements</span></span>
+<span id="cb36-2"><a href="#cb36-2" tabindex="-1"></a>pt_improvement_global <span class="ot">&lt;-</span> pt_centered_global_accuracy<span class="sc">$</span>estimate <span class="sc">-</span> pt_original_accuracy<span class="sc">$</span>estimate</span>
+<span id="cb36-3"><a href="#cb36-3" tabindex="-1"></a>pt_improvement_instrument <span class="ot">&lt;-</span> pt_centered_instrument_accuracy<span class="sc">$</span>estimate <span class="sc">-</span> pt_original_accuracy<span class="sc">$</span>estimate</span>
+<span id="cb36-4"><a href="#cb36-4" tabindex="-1"></a>ft_improvement_global <span class="ot">&lt;-</span> ft_centered_global_accuracy<span class="sc">$</span>estimate <span class="sc">-</span> ft_original_accuracy<span class="sc">$</span>estimate</span>
+<span id="cb36-5"><a href="#cb36-5" tabindex="-1"></a>ft_improvement_instrument <span class="ot">&lt;-</span> ft_centered_instrument_accuracy<span class="sc">$</span>estimate <span class="sc">-</span> ft_original_accuracy<span class="sc">$</span>estimate</span>
+<span id="cb36-6"><a href="#cb36-6" tabindex="-1"></a></span>
+<span id="cb36-7"><a href="#cb36-7" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb37"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Change in accuracy after mean-centering:</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>## Change in accuracy after mean-centering:</code></pre>
+<div class="sourceCode" id="cb39"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;</span><span class="sc">\n</span><span class="st">Pre-trained model:</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>## 
+## Pre-trained model:</code></pre>
+<div class="sourceCode" id="cb41"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Global centering:       &quot;</span>, <span class="fu">sprintf</span>(<span class="st">&quot;%+.3f&quot;</span>, pt_improvement_global), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Global centering:        +0.038</code></pre>
+<div class="sourceCode" id="cb43"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Per-instrument centering:&quot;</span>, <span class="fu">sprintf</span>(<span class="st">&quot;%+.3f&quot;</span>, pt_improvement_instrument), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Per-instrument centering: -0.165</code></pre>
+<div class="sourceCode" id="cb45"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;</span><span class="sc">\n</span><span class="st">Fine-tuned model:</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>## 
+## Fine-tuned model:</code></pre>
+<div class="sourceCode" id="cb47"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Global centering:       &quot;</span>, <span class="fu">sprintf</span>(<span class="st">&quot;%+.3f&quot;</span>, ft_improvement_global), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Global centering:        -0.019</code></pre>
+<div class="sourceCode" id="cb49"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Per-instrument centering:&quot;</span>, <span class="fu">sprintf</span>(<span class="st">&quot;%+.3f&quot;</span>, ft_improvement_instrument), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Per-instrument centering: -0.275</code></pre>
+<div class="sourceCode" id="cb51"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb52"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" tabindex="-1"></a><span class="co"># Determine best method for each model</span></span>
+<span id="cb52-2"><a href="#cb52-2" tabindex="-1"></a>pt_best <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;original&quot;</span>, <span class="st">&quot;global&quot;</span>, <span class="st">&quot;instrument&quot;</span>)[<span class="fu">which.max</span>(<span class="fu">c</span>(pt_original_accuracy<span class="sc">$</span>estimate, </span>
+<span id="cb52-3"><a href="#cb52-3" tabindex="-1"></a>                                                             pt_centered_global_accuracy<span class="sc">$</span>estimate, </span>
+<span id="cb52-4"><a href="#cb52-4" tabindex="-1"></a>                                                             pt_centered_instrument_accuracy<span class="sc">$</span>estimate))]</span>
+<span id="cb52-5"><a href="#cb52-5" tabindex="-1"></a>ft_best <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;original&quot;</span>, <span class="st">&quot;global&quot;</span>, <span class="st">&quot;instrument&quot;</span>)[<span class="fu">which.max</span>(<span class="fu">c</span>(ft_original_accuracy<span class="sc">$</span>estimate, </span>
+<span id="cb52-6"><a href="#cb52-6" tabindex="-1"></a>                                                             ft_centered_global_accuracy<span class="sc">$</span>estimate, </span>
+<span id="cb52-7"><a href="#cb52-7" tabindex="-1"></a>                                                             ft_centered_instrument_accuracy<span class="sc">$</span>estimate))]</span>
+<span id="cb52-8"><a href="#cb52-8" tabindex="-1"></a></span>
+<span id="cb52-9"><a href="#cb52-9" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Best performing method:</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>## Best performing method:</code></pre>
+<div class="sourceCode" id="cb54"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Pre-trained model: &quot;</span>, pt_best, <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Pre-trained model:  global</code></pre>
+<div class="sourceCode" id="cb56"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;  Fine-tuned model:  &quot;</span>, ft_best, <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+<pre><code>##   Fine-tuned model:   original</code></pre>
+</div>
+<div id="scatter-plots" class="section level2">
+<h2>Scatter Plots</h2>
+<div id="pre-trained-model" class="section level3">
+<h3>Pre-trained Model</h3>
+<div class="sourceCode" id="cb58"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb58-1"><a href="#cb58-1" tabindex="-1"></a><span class="fu">library</span>(patchwork)</span>
+<span id="cb58-2"><a href="#cb58-2" tabindex="-1"></a></span>
+<span id="cb58-3"><a href="#cb58-3" tabindex="-1"></a>p1 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(pt_original_pairs, <span class="fu">aes</span>(synthetic_r, empirical_r)) <span class="sc">+</span></span>
+<span id="cb58-4"><a href="#cb58-4" tabindex="-1"></a>  <span class="fu">geom_abline</span>(<span class="at">linetype =</span> <span class="st">&quot;dashed&quot;</span>) <span class="sc">+</span></span>
+<span id="cb58-5"><a href="#cb58-5" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">color =</span> <span class="st">&quot;#00A0B0&quot;</span>, <span class="at">alpha =</span> <span class="fl">0.03</span>, <span class="at">size =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb58-6"><a href="#cb58-6" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">&quot;lm&quot;</span>, <span class="at">color =</span> <span class="st">&quot;#a48500&quot;</span>, <span class="at">fill =</span> <span class="st">&quot;#EDC951&quot;</span>) <span class="sc">+</span></span>
+<span id="cb58-7"><a href="#cb58-7" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">&quot;text&quot;</span>, <span class="at">x =</span> <span class="sc">-</span><span class="dv">1</span>, <span class="at">y =</span> <span class="fl">0.98</span>, <span class="at">hjust =</span> <span class="dv">0</span>, <span class="at">vjust =</span> <span class="dv">1</span>, <span class="at">size =</span> <span class="dv">3</span>,</span>
+<span id="cb58-8"><a href="#cb58-8" tabindex="-1"></a>           <span class="at">label =</span> <span class="fu">sprintf</span>(<span class="st">&quot;r = %.3f [%.3f, %.3f]&quot;</span>, </span>
+<span id="cb58-9"><a href="#cb58-9" tabindex="-1"></a>                          pt_original_accuracy<span class="sc">$</span>estimate,</span>
+<span id="cb58-10"><a href="#cb58-10" tabindex="-1"></a>                          pt_original_accuracy<span class="sc">$</span>conf.low,</span>
+<span id="cb58-11"><a href="#cb58-11" tabindex="-1"></a>                          pt_original_accuracy<span class="sc">$</span>conf.high)) <span class="sc">+</span></span>
+<span id="cb58-12"><a href="#cb58-12" tabindex="-1"></a>  <span class="fu">xlab</span>(<span class="st">&quot;Synthetic inter-item correlation&quot;</span>) <span class="sc">+</span></span>
+<span id="cb58-13"><a href="#cb58-13" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">&quot;Empirical&quot;</span>) <span class="sc">+</span></span>
+<span id="cb58-14"><a href="#cb58-14" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">&quot;Original&quot;</span>) <span class="sc">+</span></span>
+<span id="cb58-15"><a href="#cb58-15" tabindex="-1"></a>  <span class="fu">coord_fixed</span>(<span class="at">xlim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>), <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb58-16"><a href="#cb58-16" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span>
+<span id="cb58-17"><a href="#cb58-17" tabindex="-1"></a></span>
+<span id="cb58-18"><a href="#cb58-18" tabindex="-1"></a>p2 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(pt_centered_global_pairs, <span class="fu">aes</span>(synthetic_r, empirical_r)) <span class="sc">+</span></span>
+<span id="cb58-19"><a href="#cb58-19" tabindex="-1"></a>  <span class="fu">geom_abline</span>(<span class="at">linetype =</span> <span class="st">&quot;dashed&quot;</span>) <span class="sc">+</span></span>
+<span id="cb58-20"><a href="#cb58-20" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">color =</span> <span class="st">&quot;#00A0B0&quot;</span>, <span class="at">alpha =</span> <span class="fl">0.03</span>, <span class="at">size =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb58-21"><a href="#cb58-21" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">&quot;lm&quot;</span>, <span class="at">color =</span> <span class="st">&quot;#a48500&quot;</span>, <span class="at">fill =</span> <span class="st">&quot;#EDC951&quot;</span>) <span class="sc">+</span></span>
+<span id="cb58-22"><a href="#cb58-22" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">&quot;text&quot;</span>, <span class="at">x =</span> <span class="sc">-</span><span class="dv">1</span>, <span class="at">y =</span> <span class="fl">0.98</span>, <span class="at">hjust =</span> <span class="dv">0</span>, <span class="at">vjust =</span> <span class="dv">1</span>, <span class="at">size =</span> <span class="dv">3</span>,</span>
+<span id="cb58-23"><a href="#cb58-23" tabindex="-1"></a>           <span class="at">label =</span> <span class="fu">sprintf</span>(<span class="st">&quot;r = %.3f [%.3f, %.3f]&quot;</span>, </span>
+<span id="cb58-24"><a href="#cb58-24" tabindex="-1"></a>                          pt_centered_global_accuracy<span class="sc">$</span>estimate,</span>
+<span id="cb58-25"><a href="#cb58-25" tabindex="-1"></a>                          pt_centered_global_accuracy<span class="sc">$</span>conf.low,</span>
+<span id="cb58-26"><a href="#cb58-26" tabindex="-1"></a>                          pt_centered_global_accuracy<span class="sc">$</span>conf.high)) <span class="sc">+</span></span>
+<span id="cb58-27"><a href="#cb58-27" tabindex="-1"></a>  <span class="fu">xlab</span>(<span class="st">&quot;Synthetic inter-item correlation&quot;</span>) <span class="sc">+</span></span>
+<span id="cb58-28"><a href="#cb58-28" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">&quot;Empirical&quot;</span>) <span class="sc">+</span></span>
+<span id="cb58-29"><a href="#cb58-29" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">&quot;Global mean-centered&quot;</span>) <span class="sc">+</span></span>
+<span id="cb58-30"><a href="#cb58-30" tabindex="-1"></a>  <span class="fu">coord_fixed</span>(<span class="at">xlim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>), <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb58-31"><a href="#cb58-31" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span>
+<span id="cb58-32"><a href="#cb58-32" tabindex="-1"></a></span>
+<span id="cb58-33"><a href="#cb58-33" tabindex="-1"></a>p3 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(pt_centered_instrument_pairs, <span class="fu">aes</span>(synthetic_r, empirical_r)) <span class="sc">+</span></span>
+<span id="cb58-34"><a href="#cb58-34" tabindex="-1"></a>  <span class="fu">geom_abline</span>(<span class="at">linetype =</span> <span class="st">&quot;dashed&quot;</span>) <span class="sc">+</span></span>
+<span id="cb58-35"><a href="#cb58-35" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">color =</span> <span class="st">&quot;#00A0B0&quot;</span>, <span class="at">alpha =</span> <span class="fl">0.03</span>, <span class="at">size =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb58-36"><a href="#cb58-36" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">&quot;lm&quot;</span>, <span class="at">color =</span> <span class="st">&quot;#a48500&quot;</span>, <span class="at">fill =</span> <span class="st">&quot;#EDC951&quot;</span>) <span class="sc">+</span></span>
+<span id="cb58-37"><a href="#cb58-37" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">&quot;text&quot;</span>, <span class="at">x =</span> <span class="sc">-</span><span class="dv">1</span>, <span class="at">y =</span> <span class="fl">0.98</span>, <span class="at">hjust =</span> <span class="dv">0</span>, <span class="at">vjust =</span> <span class="dv">1</span>, <span class="at">size =</span> <span class="dv">3</span>,</span>
+<span id="cb58-38"><a href="#cb58-38" tabindex="-1"></a>           <span class="at">label =</span> <span class="fu">sprintf</span>(<span class="st">&quot;r = %.3f [%.3f, %.3f]&quot;</span>, </span>
+<span id="cb58-39"><a href="#cb58-39" tabindex="-1"></a>                          pt_centered_instrument_accuracy<span class="sc">$</span>estimate,</span>
+<span id="cb58-40"><a href="#cb58-40" tabindex="-1"></a>                          pt_centered_instrument_accuracy<span class="sc">$</span>conf.low,</span>
+<span id="cb58-41"><a href="#cb58-41" tabindex="-1"></a>                          pt_centered_instrument_accuracy<span class="sc">$</span>conf.high)) <span class="sc">+</span></span>
+<span id="cb58-42"><a href="#cb58-42" tabindex="-1"></a>  <span class="fu">xlab</span>(<span class="st">&quot;Synthetic inter-item correlation&quot;</span>) <span class="sc">+</span></span>
+<span id="cb58-43"><a href="#cb58-43" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">&quot;Empirical&quot;</span>) <span class="sc">+</span></span>
+<span id="cb58-44"><a href="#cb58-44" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">&quot;Per-instrument mean-centered&quot;</span>) <span class="sc">+</span></span>
+<span id="cb58-45"><a href="#cb58-45" tabindex="-1"></a>  <span class="fu">coord_fixed</span>(<span class="at">xlim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>), <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb58-46"><a href="#cb58-46" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span>
+<span id="cb58-47"><a href="#cb58-47" tabindex="-1"></a></span>
+<span id="cb58-48"><a href="#cb58-48" tabindex="-1"></a>p1 <span class="sc">+</span> p2 <span class="sc">+</span> p3 <span class="sc">+</span> <span class="fu">plot_annotation</span>(<span class="at">title =</span> <span class="st">&quot;Pre-trained Model (SBERT)&quot;</span>)</span></code></pre></div>
+<p><img src="pellert_files/figure-html/pt-scatter-1.png" width="1440" /></p>
+</div>
+<div id="fine-tuned-model" class="section level3">
+<h3>Fine-tuned Model</h3>
+<div class="sourceCode" id="cb59"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" tabindex="-1"></a>p4 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(ft_original_pairs, <span class="fu">aes</span>(synthetic_r, empirical_r)) <span class="sc">+</span></span>
+<span id="cb59-2"><a href="#cb59-2" tabindex="-1"></a>  <span class="fu">geom_abline</span>(<span class="at">linetype =</span> <span class="st">&quot;dashed&quot;</span>) <span class="sc">+</span></span>
+<span id="cb59-3"><a href="#cb59-3" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">color =</span> <span class="st">&quot;#00A0B0&quot;</span>, <span class="at">alpha =</span> <span class="fl">0.03</span>, <span class="at">size =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb59-4"><a href="#cb59-4" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">&quot;lm&quot;</span>, <span class="at">color =</span> <span class="st">&quot;#a48500&quot;</span>, <span class="at">fill =</span> <span class="st">&quot;#EDC951&quot;</span>) <span class="sc">+</span></span>
+<span id="cb59-5"><a href="#cb59-5" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">&quot;text&quot;</span>, <span class="at">x =</span> <span class="sc">-</span><span class="dv">1</span>, <span class="at">y =</span> <span class="fl">0.98</span>, <span class="at">hjust =</span> <span class="dv">0</span>, <span class="at">vjust =</span> <span class="dv">1</span>, <span class="at">size =</span> <span class="dv">3</span>,</span>
+<span id="cb59-6"><a href="#cb59-6" tabindex="-1"></a>           <span class="at">label =</span> <span class="fu">sprintf</span>(<span class="st">&quot;r = %.3f [%.3f, %.3f]&quot;</span>, </span>
+<span id="cb59-7"><a href="#cb59-7" tabindex="-1"></a>                          ft_original_accuracy<span class="sc">$</span>estimate,</span>
+<span id="cb59-8"><a href="#cb59-8" tabindex="-1"></a>                          ft_original_accuracy<span class="sc">$</span>conf.low,</span>
+<span id="cb59-9"><a href="#cb59-9" tabindex="-1"></a>                          ft_original_accuracy<span class="sc">$</span>conf.high)) <span class="sc">+</span></span>
+<span id="cb59-10"><a href="#cb59-10" tabindex="-1"></a>  <span class="fu">xlab</span>(<span class="st">&quot;Synthetic inter-item correlation&quot;</span>) <span class="sc">+</span></span>
+<span id="cb59-11"><a href="#cb59-11" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">&quot;Empirical&quot;</span>) <span class="sc">+</span></span>
+<span id="cb59-12"><a href="#cb59-12" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">&quot;Original&quot;</span>) <span class="sc">+</span></span>
+<span id="cb59-13"><a href="#cb59-13" tabindex="-1"></a>  <span class="fu">coord_fixed</span>(<span class="at">xlim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>), <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb59-14"><a href="#cb59-14" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span>
+<span id="cb59-15"><a href="#cb59-15" tabindex="-1"></a></span>
+<span id="cb59-16"><a href="#cb59-16" tabindex="-1"></a>p5 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(ft_centered_global_pairs, <span class="fu">aes</span>(synthetic_r, empirical_r)) <span class="sc">+</span></span>
+<span id="cb59-17"><a href="#cb59-17" tabindex="-1"></a>  <span class="fu">geom_abline</span>(<span class="at">linetype =</span> <span class="st">&quot;dashed&quot;</span>) <span class="sc">+</span></span>
+<span id="cb59-18"><a href="#cb59-18" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">color =</span> <span class="st">&quot;#00A0B0&quot;</span>, <span class="at">alpha =</span> <span class="fl">0.03</span>, <span class="at">size =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb59-19"><a href="#cb59-19" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">&quot;lm&quot;</span>, <span class="at">color =</span> <span class="st">&quot;#a48500&quot;</span>, <span class="at">fill =</span> <span class="st">&quot;#EDC951&quot;</span>) <span class="sc">+</span></span>
+<span id="cb59-20"><a href="#cb59-20" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">&quot;text&quot;</span>, <span class="at">x =</span> <span class="sc">-</span><span class="dv">1</span>, <span class="at">y =</span> <span class="fl">0.98</span>, <span class="at">hjust =</span> <span class="dv">0</span>, <span class="at">vjust =</span> <span class="dv">1</span>, <span class="at">size =</span> <span class="dv">3</span>,</span>
+<span id="cb59-21"><a href="#cb59-21" tabindex="-1"></a>           <span class="at">label =</span> <span class="fu">sprintf</span>(<span class="st">&quot;r = %.3f [%.3f, %.3f]&quot;</span>, </span>
+<span id="cb59-22"><a href="#cb59-22" tabindex="-1"></a>                          ft_centered_global_accuracy<span class="sc">$</span>estimate,</span>
+<span id="cb59-23"><a href="#cb59-23" tabindex="-1"></a>                          ft_centered_global_accuracy<span class="sc">$</span>conf.low,</span>
+<span id="cb59-24"><a href="#cb59-24" tabindex="-1"></a>                          ft_centered_global_accuracy<span class="sc">$</span>conf.high)) <span class="sc">+</span></span>
+<span id="cb59-25"><a href="#cb59-25" tabindex="-1"></a>  <span class="fu">xlab</span>(<span class="st">&quot;Synthetic inter-item correlation&quot;</span>) <span class="sc">+</span></span>
+<span id="cb59-26"><a href="#cb59-26" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">&quot;Empirical&quot;</span>) <span class="sc">+</span></span>
+<span id="cb59-27"><a href="#cb59-27" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">&quot;Global mean-centered&quot;</span>) <span class="sc">+</span></span>
+<span id="cb59-28"><a href="#cb59-28" tabindex="-1"></a>  <span class="fu">coord_fixed</span>(<span class="at">xlim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>), <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb59-29"><a href="#cb59-29" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span>
+<span id="cb59-30"><a href="#cb59-30" tabindex="-1"></a></span>
+<span id="cb59-31"><a href="#cb59-31" tabindex="-1"></a>p6 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(ft_centered_instrument_pairs, <span class="fu">aes</span>(synthetic_r, empirical_r)) <span class="sc">+</span></span>
+<span id="cb59-32"><a href="#cb59-32" tabindex="-1"></a>  <span class="fu">geom_abline</span>(<span class="at">linetype =</span> <span class="st">&quot;dashed&quot;</span>) <span class="sc">+</span></span>
+<span id="cb59-33"><a href="#cb59-33" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">color =</span> <span class="st">&quot;#00A0B0&quot;</span>, <span class="at">alpha =</span> <span class="fl">0.03</span>, <span class="at">size =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb59-34"><a href="#cb59-34" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">&quot;lm&quot;</span>, <span class="at">color =</span> <span class="st">&quot;#a48500&quot;</span>, <span class="at">fill =</span> <span class="st">&quot;#EDC951&quot;</span>) <span class="sc">+</span></span>
+<span id="cb59-35"><a href="#cb59-35" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">&quot;text&quot;</span>, <span class="at">x =</span> <span class="sc">-</span><span class="dv">1</span>, <span class="at">y =</span> <span class="fl">0.98</span>, <span class="at">hjust =</span> <span class="dv">0</span>, <span class="at">vjust =</span> <span class="dv">1</span>, <span class="at">size =</span> <span class="dv">3</span>,</span>
+<span id="cb59-36"><a href="#cb59-36" tabindex="-1"></a>           <span class="at">label =</span> <span class="fu">sprintf</span>(<span class="st">&quot;r = %.3f [%.3f, %.3f]&quot;</span>, </span>
+<span id="cb59-37"><a href="#cb59-37" tabindex="-1"></a>                          ft_centered_instrument_accuracy<span class="sc">$</span>estimate,</span>
+<span id="cb59-38"><a href="#cb59-38" tabindex="-1"></a>                          ft_centered_instrument_accuracy<span class="sc">$</span>conf.low,</span>
+<span id="cb59-39"><a href="#cb59-39" tabindex="-1"></a>                          ft_centered_instrument_accuracy<span class="sc">$</span>conf.high)) <span class="sc">+</span></span>
+<span id="cb59-40"><a href="#cb59-40" tabindex="-1"></a>  <span class="fu">xlab</span>(<span class="st">&quot;Synthetic inter-item correlation&quot;</span>) <span class="sc">+</span></span>
+<span id="cb59-41"><a href="#cb59-41" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">&quot;Empirical&quot;</span>) <span class="sc">+</span></span>
+<span id="cb59-42"><a href="#cb59-42" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">&quot;Per-instrument mean-centered&quot;</span>) <span class="sc">+</span></span>
+<span id="cb59-43"><a href="#cb59-43" tabindex="-1"></a>  <span class="fu">coord_fixed</span>(<span class="at">xlim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>), <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb59-44"><a href="#cb59-44" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span>
+<span id="cb59-45"><a href="#cb59-45" tabindex="-1"></a></span>
+<span id="cb59-46"><a href="#cb59-46" tabindex="-1"></a>p4 <span class="sc">+</span> p5 <span class="sc">+</span> p6 <span class="sc">+</span> <span class="fu">plot_annotation</span>(<span class="at">title =</span> <span class="st">&quot;Fine-tuned Model (SurveyBot3000)&quot;</span>)</span></code></pre></div>
+<p><img src="pellert_files/figure-html/ft-scatter-1.png" width="1440" /></p>
+</div>
+</div>
+<div id="summary-statistics" class="section level2">
+<h2>Summary Statistics</h2>
+<div class="sourceCode" id="cb60"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb60-1"><a href="#cb60-1" tabindex="-1"></a><span class="co"># Summary statistics for synthetic correlations</span></span>
+<span id="cb60-2"><a href="#cb60-2" tabindex="-1"></a>summary_stats <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
+<span id="cb60-3"><a href="#cb60-3" tabindex="-1"></a>  pt_original_pairs <span class="sc">%&gt;%</span> </span>
+<span id="cb60-4"><a href="#cb60-4" tabindex="-1"></a>    <span class="fu">summarise</span>(</span>
+<span id="cb60-5"><a href="#cb60-5" tabindex="-1"></a>      <span class="at">model =</span> <span class="st">&quot;Pre-trained&quot;</span>,</span>
+<span id="cb60-6"><a href="#cb60-6" tabindex="-1"></a>      <span class="at">method =</span> <span class="st">&quot;Original&quot;</span>,</span>
+<span id="cb60-7"><a href="#cb60-7" tabindex="-1"></a>      <span class="at">mean_synthetic =</span> <span class="fu">mean</span>(synthetic_r),</span>
+<span id="cb60-8"><a href="#cb60-8" tabindex="-1"></a>      <span class="at">sd_synthetic =</span> <span class="fu">sd</span>(synthetic_r),</span>
+<span id="cb60-9"><a href="#cb60-9" tabindex="-1"></a>      <span class="at">mean_abs_synthetic =</span> <span class="fu">mean</span>(<span class="fu">abs</span>(synthetic_r))</span>
+<span id="cb60-10"><a href="#cb60-10" tabindex="-1"></a>    ),</span>
+<span id="cb60-11"><a href="#cb60-11" tabindex="-1"></a>  pt_centered_global_pairs <span class="sc">%&gt;%</span> </span>
+<span id="cb60-12"><a href="#cb60-12" tabindex="-1"></a>    <span class="fu">summarise</span>(</span>
+<span id="cb60-13"><a href="#cb60-13" tabindex="-1"></a>      <span class="at">model =</span> <span class="st">&quot;Pre-trained&quot;</span>,</span>
+<span id="cb60-14"><a href="#cb60-14" tabindex="-1"></a>      <span class="at">method =</span> <span class="st">&quot;Global mean-centered&quot;</span>,</span>
+<span id="cb60-15"><a href="#cb60-15" tabindex="-1"></a>      <span class="at">mean_synthetic =</span> <span class="fu">mean</span>(synthetic_r),</span>
+<span id="cb60-16"><a href="#cb60-16" tabindex="-1"></a>      <span class="at">sd_synthetic =</span> <span class="fu">sd</span>(synthetic_r),</span>
+<span id="cb60-17"><a href="#cb60-17" tabindex="-1"></a>      <span class="at">mean_abs_synthetic =</span> <span class="fu">mean</span>(<span class="fu">abs</span>(synthetic_r))</span>
+<span id="cb60-18"><a href="#cb60-18" tabindex="-1"></a>    ),</span>
+<span id="cb60-19"><a href="#cb60-19" tabindex="-1"></a>  pt_centered_instrument_pairs <span class="sc">%&gt;%</span> </span>
+<span id="cb60-20"><a href="#cb60-20" tabindex="-1"></a>    <span class="fu">summarise</span>(</span>
+<span id="cb60-21"><a href="#cb60-21" tabindex="-1"></a>      <span class="at">model =</span> <span class="st">&quot;Pre-trained&quot;</span>,</span>
+<span id="cb60-22"><a href="#cb60-22" tabindex="-1"></a>      <span class="at">method =</span> <span class="st">&quot;Per-instrument mean-centered&quot;</span>,</span>
+<span id="cb60-23"><a href="#cb60-23" tabindex="-1"></a>      <span class="at">mean_synthetic =</span> <span class="fu">mean</span>(synthetic_r),</span>
+<span id="cb60-24"><a href="#cb60-24" tabindex="-1"></a>      <span class="at">sd_synthetic =</span> <span class="fu">sd</span>(synthetic_r),</span>
+<span id="cb60-25"><a href="#cb60-25" tabindex="-1"></a>      <span class="at">mean_abs_synthetic =</span> <span class="fu">mean</span>(<span class="fu">abs</span>(synthetic_r))</span>
+<span id="cb60-26"><a href="#cb60-26" tabindex="-1"></a>    ),</span>
+<span id="cb60-27"><a href="#cb60-27" tabindex="-1"></a>  ft_original_pairs <span class="sc">%&gt;%</span> </span>
+<span id="cb60-28"><a href="#cb60-28" tabindex="-1"></a>    <span class="fu">summarise</span>(</span>
+<span id="cb60-29"><a href="#cb60-29" tabindex="-1"></a>      <span class="at">model =</span> <span class="st">&quot;Fine-tuned&quot;</span>,</span>
+<span id="cb60-30"><a href="#cb60-30" tabindex="-1"></a>      <span class="at">method =</span> <span class="st">&quot;Original&quot;</span>,</span>
+<span id="cb60-31"><a href="#cb60-31" tabindex="-1"></a>      <span class="at">mean_synthetic =</span> <span class="fu">mean</span>(synthetic_r),</span>
+<span id="cb60-32"><a href="#cb60-32" tabindex="-1"></a>      <span class="at">sd_synthetic =</span> <span class="fu">sd</span>(synthetic_r),</span>
+<span id="cb60-33"><a href="#cb60-33" tabindex="-1"></a>      <span class="at">mean_abs_synthetic =</span> <span class="fu">mean</span>(<span class="fu">abs</span>(synthetic_r))</span>
+<span id="cb60-34"><a href="#cb60-34" tabindex="-1"></a>    ),</span>
+<span id="cb60-35"><a href="#cb60-35" tabindex="-1"></a>  ft_centered_global_pairs <span class="sc">%&gt;%</span> </span>
+<span id="cb60-36"><a href="#cb60-36" tabindex="-1"></a>    <span class="fu">summarise</span>(</span>
+<span id="cb60-37"><a href="#cb60-37" tabindex="-1"></a>      <span class="at">model =</span> <span class="st">&quot;Fine-tuned&quot;</span>,</span>
+<span id="cb60-38"><a href="#cb60-38" tabindex="-1"></a>      <span class="at">method =</span> <span class="st">&quot;Global mean-centered&quot;</span>,</span>
+<span id="cb60-39"><a href="#cb60-39" tabindex="-1"></a>      <span class="at">mean_synthetic =</span> <span class="fu">mean</span>(synthetic_r),</span>
+<span id="cb60-40"><a href="#cb60-40" tabindex="-1"></a>      <span class="at">sd_synthetic =</span> <span class="fu">sd</span>(synthetic_r),</span>
+<span id="cb60-41"><a href="#cb60-41" tabindex="-1"></a>      <span class="at">mean_abs_synthetic =</span> <span class="fu">mean</span>(<span class="fu">abs</span>(synthetic_r))</span>
+<span id="cb60-42"><a href="#cb60-42" tabindex="-1"></a>    ),</span>
+<span id="cb60-43"><a href="#cb60-43" tabindex="-1"></a>  ft_centered_instrument_pairs <span class="sc">%&gt;%</span> </span>
+<span id="cb60-44"><a href="#cb60-44" tabindex="-1"></a>    <span class="fu">summarise</span>(</span>
+<span id="cb60-45"><a href="#cb60-45" tabindex="-1"></a>      <span class="at">model =</span> <span class="st">&quot;Fine-tuned&quot;</span>,</span>
+<span id="cb60-46"><a href="#cb60-46" tabindex="-1"></a>      <span class="at">method =</span> <span class="st">&quot;Per-instrument mean-centered&quot;</span>,</span>
+<span id="cb60-47"><a href="#cb60-47" tabindex="-1"></a>      <span class="at">mean_synthetic =</span> <span class="fu">mean</span>(synthetic_r),</span>
+<span id="cb60-48"><a href="#cb60-48" tabindex="-1"></a>      <span class="at">sd_synthetic =</span> <span class="fu">sd</span>(synthetic_r),</span>
+<span id="cb60-49"><a href="#cb60-49" tabindex="-1"></a>      <span class="at">mean_abs_synthetic =</span> <span class="fu">mean</span>(<span class="fu">abs</span>(synthetic_r))</span>
+<span id="cb60-50"><a href="#cb60-50" tabindex="-1"></a>    )</span>
+<span id="cb60-51"><a href="#cb60-51" tabindex="-1"></a>)</span>
+<span id="cb60-52"><a href="#cb60-52" tabindex="-1"></a></span>
+<span id="cb60-53"><a href="#cb60-53" tabindex="-1"></a><span class="fu">kable</span>(summary_stats, <span class="at">digits =</span> <span class="dv">3</span>, <span class="at">caption =</span> <span class="st">&quot;Summary statistics for synthetic correlations&quot;</span>)</span></code></pre></div>
+<table>
+<caption>Summary statistics for synthetic correlations</caption>
+<colgroup>
+<col width="13%" />
+<col width="32%" />
+<col width="17%" />
+<col width="14%" />
+<col width="21%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">model</th>
+<th align="left">method</th>
+<th align="right">mean_synthetic</th>
+<th align="right">sd_synthetic</th>
+<th align="right">mean_abs_synthetic</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Pre-trained</td>
+<td align="left">Original</td>
+<td align="right">0.182</td>
+<td align="right">0.136</td>
+<td align="right">0.186</td>
+</tr>
+<tr class="even">
+<td align="left">Pre-trained</td>
+<td align="left">Global mean-centered</td>
+<td align="right">-0.004</td>
+<td align="right">0.140</td>
+<td align="right">0.104</td>
+</tr>
+<tr class="odd">
+<td align="left">Pre-trained</td>
+<td align="left">Per-instrument mean-centered</td>
+<td align="right">-0.004</td>
+<td align="right">0.108</td>
+<td align="right">0.082</td>
+</tr>
+<tr class="even">
+<td align="left">Fine-tuned</td>
+<td align="left">Original</td>
+<td align="right">0.056</td>
+<td align="right">0.128</td>
+<td align="right">0.102</td>
+</tr>
+<tr class="odd">
+<td align="left">Fine-tuned</td>
+<td align="left">Global mean-centered</td>
+<td align="right">-0.004</td>
+<td align="right">0.131</td>
+<td align="right">0.097</td>
+</tr>
+<tr class="even">
+<td align="left">Fine-tuned</td>
+<td align="left">Per-instrument mean-centered</td>
+<td align="right">-0.004</td>
+<td align="right">0.118</td>
+<td align="right">0.087</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="within-vs.-across-instrument-analysis" class="section level2">
+<h2>Within vs. Across Instrument Analysis</h2>
+<p>The per-instrument centering likely drops accuracy because it removes
+valid information about similarities between instruments. Pellert et
+al. applied this method to a single questionnaire (PVQ-RR), but here we
+have items from multiple instruments where cross-instrument similarities
+are meaningful.</p>
+<p>Let’s examine accuracy separately for within-instrument and
+across-instrument item pairs:</p>
+<div class="sourceCode" id="cb61"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb61-1"><a href="#cb61-1" tabindex="-1"></a><span class="co"># Add instrument information to each pair</span></span>
+<span id="cb61-2"><a href="#cb61-2" tabindex="-1"></a>add_instrument_info <span class="ot">&lt;-</span> <span class="cf">function</span>(pairs, mapping) {</span>
+<span id="cb61-3"><a href="#cb61-3" tabindex="-1"></a>  pairs <span class="sc">%&gt;%</span></span>
+<span id="cb61-4"><a href="#cb61-4" tabindex="-1"></a>    <span class="fu">left_join</span>(mapping <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="at">variable_1 =</span> variable, <span class="at">instrument_1 =</span> instrument), </span>
+<span id="cb61-5"><a href="#cb61-5" tabindex="-1"></a>              <span class="at">by =</span> <span class="st">&quot;variable_1&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb61-6"><a href="#cb61-6" tabindex="-1"></a>    <span class="fu">left_join</span>(mapping <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="at">variable_2 =</span> variable, <span class="at">instrument_2 =</span> instrument), </span>
+<span id="cb61-7"><a href="#cb61-7" tabindex="-1"></a>              <span class="at">by =</span> <span class="st">&quot;variable_2&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb61-8"><a href="#cb61-8" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">same_instrument =</span> instrument_1 <span class="sc">==</span> instrument_2)</span>
+<span id="cb61-9"><a href="#cb61-9" tabindex="-1"></a>}</span>
+<span id="cb61-10"><a href="#cb61-10" tabindex="-1"></a></span>
+<span id="cb61-11"><a href="#cb61-11" tabindex="-1"></a><span class="co"># Add instrument info to all datasets</span></span>
+<span id="cb61-12"><a href="#cb61-12" tabindex="-1"></a>pt_original_pairs_instr <span class="ot">&lt;-</span> <span class="fu">add_instrument_info</span>(pt_original_pairs, rr_validation_mapping_data)</span>
+<span id="cb61-13"><a href="#cb61-13" tabindex="-1"></a>pt_centered_global_pairs_instr <span class="ot">&lt;-</span> <span class="fu">add_instrument_info</span>(pt_centered_global_pairs, rr_validation_mapping_data)</span>
+<span id="cb61-14"><a href="#cb61-14" tabindex="-1"></a>pt_centered_instrument_pairs_instr <span class="ot">&lt;-</span> <span class="fu">add_instrument_info</span>(pt_centered_instrument_pairs, rr_validation_mapping_data)</span>
+<span id="cb61-15"><a href="#cb61-15" tabindex="-1"></a></span>
+<span id="cb61-16"><a href="#cb61-16" tabindex="-1"></a>ft_original_pairs_instr <span class="ot">&lt;-</span> <span class="fu">add_instrument_info</span>(ft_original_pairs, rr_validation_mapping_data)</span>
+<span id="cb61-17"><a href="#cb61-17" tabindex="-1"></a>ft_centered_global_pairs_instr <span class="ot">&lt;-</span> <span class="fu">add_instrument_info</span>(ft_centered_global_pairs, rr_validation_mapping_data)</span>
+<span id="cb61-18"><a href="#cb61-18" tabindex="-1"></a>ft_centered_instrument_pairs_instr <span class="ot">&lt;-</span> <span class="fu">add_instrument_info</span>(ft_centered_instrument_pairs, rr_validation_mapping_data)</span>
+<span id="cb61-19"><a href="#cb61-19" tabindex="-1"></a></span>
+<span id="cb61-20"><a href="#cb61-20" tabindex="-1"></a><span class="co"># Calculate accuracy within and across instruments</span></span>
+<span id="cb61-21"><a href="#cb61-21" tabindex="-1"></a>accuracy_by_context <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
+<span id="cb61-22"><a href="#cb61-22" tabindex="-1"></a>  <span class="co"># Pre-trained</span></span>
+<span id="cb61-23"><a href="#cb61-23" tabindex="-1"></a>  pt_original_pairs_instr <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(same_instrument) <span class="sc">%&gt;%</span></span>
+<span id="cb61-24"><a href="#cb61-24" tabindex="-1"></a>    <span class="fu">summarise</span>(broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">cor.test</span>(empirical_r, synthetic_r)), <span class="at">n_pairs =</span> <span class="fu">n</span>()) <span class="sc">%&gt;%</span></span>
+<span id="cb61-25"><a href="#cb61-25" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">model =</span> <span class="st">&quot;Pre-trained&quot;</span>, <span class="at">method =</span> <span class="st">&quot;Original&quot;</span>),</span>
+<span id="cb61-26"><a href="#cb61-26" tabindex="-1"></a>  pt_centered_global_pairs_instr <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(same_instrument) <span class="sc">%&gt;%</span></span>
+<span id="cb61-27"><a href="#cb61-27" tabindex="-1"></a>    <span class="fu">summarise</span>(broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">cor.test</span>(empirical_r, synthetic_r)), <span class="at">n_pairs =</span> <span class="fu">n</span>()) <span class="sc">%&gt;%</span></span>
+<span id="cb61-28"><a href="#cb61-28" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">model =</span> <span class="st">&quot;Pre-trained&quot;</span>, <span class="at">method =</span> <span class="st">&quot;Global mean-centered&quot;</span>),</span>
+<span id="cb61-29"><a href="#cb61-29" tabindex="-1"></a>  pt_centered_instrument_pairs_instr <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(same_instrument) <span class="sc">%&gt;%</span></span>
+<span id="cb61-30"><a href="#cb61-30" tabindex="-1"></a>    <span class="fu">summarise</span>(broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">cor.test</span>(empirical_r, synthetic_r)), <span class="at">n_pairs =</span> <span class="fu">n</span>()) <span class="sc">%&gt;%</span></span>
+<span id="cb61-31"><a href="#cb61-31" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">model =</span> <span class="st">&quot;Pre-trained&quot;</span>, <span class="at">method =</span> <span class="st">&quot;Per-instrument mean-centered&quot;</span>),</span>
+<span id="cb61-32"><a href="#cb61-32" tabindex="-1"></a>  </span>
+<span id="cb61-33"><a href="#cb61-33" tabindex="-1"></a>  <span class="co"># Fine-tuned</span></span>
+<span id="cb61-34"><a href="#cb61-34" tabindex="-1"></a>  ft_original_pairs_instr <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(same_instrument) <span class="sc">%&gt;%</span></span>
+<span id="cb61-35"><a href="#cb61-35" tabindex="-1"></a>    <span class="fu">summarise</span>(broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">cor.test</span>(empirical_r, synthetic_r)), <span class="at">n_pairs =</span> <span class="fu">n</span>()) <span class="sc">%&gt;%</span></span>
+<span id="cb61-36"><a href="#cb61-36" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">model =</span> <span class="st">&quot;Fine-tuned&quot;</span>, <span class="at">method =</span> <span class="st">&quot;Original&quot;</span>),</span>
+<span id="cb61-37"><a href="#cb61-37" tabindex="-1"></a>  ft_centered_global_pairs_instr <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(same_instrument) <span class="sc">%&gt;%</span></span>
+<span id="cb61-38"><a href="#cb61-38" tabindex="-1"></a>    <span class="fu">summarise</span>(broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">cor.test</span>(empirical_r, synthetic_r)), <span class="at">n_pairs =</span> <span class="fu">n</span>()) <span class="sc">%&gt;%</span></span>
+<span id="cb61-39"><a href="#cb61-39" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">model =</span> <span class="st">&quot;Fine-tuned&quot;</span>, <span class="at">method =</span> <span class="st">&quot;Global mean-centered&quot;</span>),</span>
+<span id="cb61-40"><a href="#cb61-40" tabindex="-1"></a>  ft_centered_instrument_pairs_instr <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(same_instrument) <span class="sc">%&gt;%</span></span>
+<span id="cb61-41"><a href="#cb61-41" tabindex="-1"></a>    <span class="fu">summarise</span>(broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">cor.test</span>(empirical_r, synthetic_r)), <span class="at">n_pairs =</span> <span class="fu">n</span>()) <span class="sc">%&gt;%</span></span>
+<span id="cb61-42"><a href="#cb61-42" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">model =</span> <span class="st">&quot;Fine-tuned&quot;</span>, <span class="at">method =</span> <span class="st">&quot;Per-instrument mean-centered&quot;</span>)</span>
+<span id="cb61-43"><a href="#cb61-43" tabindex="-1"></a>) <span class="sc">%&gt;%</span></span>
+<span id="cb61-44"><a href="#cb61-44" tabindex="-1"></a>  <span class="fu">select</span>(model, method, same_instrument, <span class="at">accuracy =</span> estimate, conf.low, conf.high, n_pairs)</span>
+<span id="cb61-45"><a href="#cb61-45" tabindex="-1"></a></span>
+<span id="cb61-46"><a href="#cb61-46" tabindex="-1"></a><span class="co"># Format for display</span></span>
+<span id="cb61-47"><a href="#cb61-47" tabindex="-1"></a>accuracy_by_context <span class="sc">%&gt;%</span></span>
+<span id="cb61-48"><a href="#cb61-48" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">context =</span> <span class="fu">if_else</span>(same_instrument, <span class="st">&quot;Within instrument&quot;</span>, <span class="st">&quot;Across instruments&quot;</span>),</span>
+<span id="cb61-49"><a href="#cb61-49" tabindex="-1"></a>         <span class="at">accuracy_ci =</span> <span class="fu">sprintf</span>(<span class="st">&quot;%.3f [%.3f, %.3f]&quot;</span>, accuracy, conf.low, conf.high)) <span class="sc">%&gt;%</span></span>
+<span id="cb61-50"><a href="#cb61-50" tabindex="-1"></a>  <span class="fu">select</span>(model, method, context, accuracy_ci, n_pairs) <span class="sc">%&gt;%</span></span>
+<span id="cb61-51"><a href="#cb61-51" tabindex="-1"></a>  <span class="fu">kable</span>(<span class="at">caption =</span> <span class="st">&quot;Accuracy for within-instrument vs. across-instrument item pairs&quot;</span>)</span></code></pre></div>
+<table>
+<caption>Accuracy for within-instrument vs. across-instrument item
+pairs</caption>
+<colgroup>
+<col width="13%" />
+<col width="32%" />
+<col width="21%" />
+<col width="23%" />
+<col width="8%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">model</th>
+<th align="left">method</th>
+<th align="left">context</th>
+<th align="left">accuracy_ci</th>
+<th align="right">n_pairs</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Pre-trained</td>
+<td align="left">Original</td>
+<td align="left">Across instruments</td>
+<td align="left">0.233 [0.222, 0.244]</td>
+<td align="right">28432</td>
+</tr>
+<tr class="even">
+<td align="left">Pre-trained</td>
+<td align="left">Original</td>
+<td align="left">Within instrument</td>
+<td align="left">0.330 [0.287, 0.371]</td>
+<td align="right">1703</td>
+</tr>
+<tr class="odd">
+<td align="left">Pre-trained</td>
+<td align="left">Global mean-centered</td>
+<td align="left">Across instruments</td>
+<td align="left">0.285 [0.274, 0.295]</td>
+<td align="right">28432</td>
+</tr>
+<tr class="even">
+<td align="left">Pre-trained</td>
+<td align="left">Global mean-centered</td>
+<td align="left">Within instrument</td>
+<td align="left">0.281 [0.237, 0.325]</td>
+<td align="right">1703</td>
+</tr>
+<tr class="odd">
+<td align="left">Pre-trained</td>
+<td align="left">Per-instrument mean-centered</td>
+<td align="left">Across instruments</td>
+<td align="left">0.172 [0.160, 0.183]</td>
+<td align="right">28432</td>
+</tr>
+<tr class="even">
+<td align="left">Pre-trained</td>
+<td align="left">Per-instrument mean-centered</td>
+<td align="left">Within instrument</td>
+<td align="left">0.176 [0.130, 0.222]</td>
+<td align="right">1703</td>
+</tr>
+<tr class="odd">
+<td align="left">Fine-tuned</td>
+<td align="left">Original</td>
+<td align="left">Across instruments</td>
+<td align="left">0.550 [0.542, 0.558]</td>
+<td align="right">28432</td>
+</tr>
+<tr class="even">
+<td align="left">Fine-tuned</td>
+<td align="left">Original</td>
+<td align="left">Within instrument</td>
+<td align="left">0.536 [0.501, 0.569]</td>
+<td align="right">1703</td>
+</tr>
+<tr class="odd">
+<td align="left">Fine-tuned</td>
+<td align="left">Global mean-centered</td>
+<td align="left">Across instruments</td>
+<td align="left">0.527 [0.519, 0.536]</td>
+<td align="right">28432</td>
+</tr>
+<tr class="even">
+<td align="left">Fine-tuned</td>
+<td align="left">Global mean-centered</td>
+<td align="left">Within instrument</td>
+<td align="left">0.524 [0.489, 0.558]</td>
+<td align="right">1703</td>
+</tr>
+<tr class="odd">
+<td align="left">Fine-tuned</td>
+<td align="left">Per-instrument mean-centered</td>
+<td align="left">Across instruments</td>
+<td align="left">0.322 [0.311, 0.332]</td>
+<td align="right">28432</td>
+</tr>
+<tr class="even">
+<td align="left">Fine-tuned</td>
+<td align="left">Per-instrument mean-centered</td>
+<td align="left">Within instrument</td>
+<td align="left">0.385 [0.344, 0.425]</td>
+<td align="right">1703</td>
+</tr>
+</tbody>
+</table>
+<div id="interpretation-1" class="section level3">
+<h3>Interpretation</h3>
+<p><strong>Per-instrument mean-centering damages accuracy both within
+AND across instruments</strong>, suggesting that what Pellert et
+al. characterized as “common linguistic features” and “unneeded
+information” actually contains valid psychological signal.</p>
+<p>Key findings:</p>
+<ol style="list-style-type: decimal">
+<li><p><strong>Across-instrument pairs</strong>: Per-instrument
+centering removes meaningful semantic differences between instruments
+(e.g., depression items vs. personality items have genuinely different
+content)</p></li>
+<li><p><strong>Within-instrument pairs</strong>: Even here,
+per-instrument centering reduces accuracy, suggesting the “questionnaire
+embedding” (mean vector) captures valid shared content rather than mere
+linguistic artifacts</p></li>
+</ol>
+<p><strong>Why might the instrument mean contain signal rather than
+noise?</strong></p>
+<ul>
+<li>Items within a questionnaire share substantive psychological content
+(e.g., all depression items reference negative affect)</li>
+<li>This shared content creates meaningful correlations that the model
+should detect</li>
+<li>Removing it leaves only item-specific deviations, discarding valid
+information about how items relate to the construct</li>
+</ul>
+<p><strong>Implications</strong>: The Pellert et al. approach may be
+problematic even for single-questionnaire applications if the
+questionnaire has coherent substantive content. The “high-dimensional
+linguistic features” they remove may actually be capturing real
+psychological similarities.</p>
+<p>Since our validation study includes 94.3% cross-instrument pairs, the
+overall accuracy drops substantially, but the within-instrument
+degradation is equally concerning. ```</p>
+</div>
+</div>
+<div id="summary-of-findings" class="section level2">
+<h2>Summary of Findings</h2>
+<p>Pellert et al. (2024) propose “Survey and Questionnaire Item
+Embeddings Differentials” (SQuID), a method for improving the quality of
+semantic embeddings for psychometric items. Their approach involves
+subtracting the mean embedding vector across all questionnaire items
+from each individual item embedding. The authors frame this operation as
+removing “common linguistic features of natural language use” that
+artificially inflate similarities between items and obscure meaningful
+psychological differences. They report substantial improvements in their
+validation study using the 57-item Portrait Values Questionnaire-Revised
+(PVQ-RR), particularly for pre-trained models.</p>
+<p>We tested whether this method generalizes to our validation dataset,
+which contains 246 items from multiple psychological instruments. We
+implemented two variants of the method: global mean-centering
+(subtracting the mean across all 246 items) and per-instrument
+mean-centering (subtracting the instrument-specific mean from items
+within each questionnaire, as Pellert et al. actually did with their
+single-questionnaire dataset).</p>
+<p>The empirical results reveal a striking pattern. For the pre-trained
+SBERT model, global mean-centering produces a modest improvement in
+accuracy from 0.302 to 0.340 (but the graph still looks croissant
+shaped, so it does not solve the problem with negative correlations).
+However, for the fine-tuned model, mean-centering consistently degrades
+performance. Global mean-centering reduces accuracy from 0.570 to 0.551,
+while per-instrument mean-centering reduces it further to 0.295. Most
+critically, when examining item pairs within the same instrument,
+per-instrument mean-centering reduces accuracy from approximately 0.54
+to 0.38. This within-instrument degradation directly contradicts the
+interpretation that the instrument-level mean embedding represents
+removable linguistic noise.</p>
+<p>The theoretical issue becomes clear when considering what items
+within a well-designed psychological instrument actually share. Items
+measuring depression, for example, reference related psychological
+states such as sadness, anhedonia, fatigue, and worthlessness. These
+items should correlate because they measure facets of the same
+underlying construct. Their embeddings are genuinely similar because
+they describe related psychological content. The instrument-level mean
+embedding captures this shared construct-level semantic content, not
+merely superficial linguistic features.</p>
+<p>When the instrument mean is subtracted from each item embedding, the
+operation removes the semantic core that defines what the instrument
+measures. What remains are only item-specific deviations from the
+construct mean. While this might preserve some information about how
+items differ in their particular instantiation of the construct, it
+destroys information about how strongly each item relates to the overall
+construct. For a fine-tuned model that has learned to encode
+psychological constructs efficiently, this removal of shared construct
+information directly damages the model’s ability to predict empirical
+item correlations.</p>
+<p>The differential effects across models provide additional insight.
+The pre-trained SBERT model benefits slightly from global
+mean-centering, likely because it does contain substantial generic
+linguistic patterns that happen to be consistent across survey items but
+unrelated to psychological content. The fine-tuned model, having learned
+to use the embedding space specifically for psychological similarity,
+encodes less generic linguistic noise and more construct-specific
+information in its shared embeddings. Removing the mean therefore
+damages the fine-tuned model more severely.</p>
+<p>These findings suggest that Pellert et al.’s success may not reflect
+a general principle about removing linguistic artifacts from
+psychological embeddings. Instead, their method may have been effective
+for their specific combination of a pre-trained model and a single,
+highly coherent questionnaire. The method fails when applied to a
+fine-tuned model or to a diverse collection of instruments, precisely
+because it removes valid psychological signal rather than mere
+linguistic noise. Researchers should be cautious about applying this
+preprocessing step, particularly when working with models that have been
+trained on psychological content or when analyzing multiple instruments
+where construct-level differences contain meaningful information.</p>
+</div>
+
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiUGVsbGVydCBldCBhbC4gTWV0aG9kOiBNZWFuLUNlbnRlcmVkIEVtYmVkZGluZ3MiCm91dHB1dDogaHRtbF9kb2N1bWVudApkYXRlOiAiYHIgU3lzLkRhdGUoKWAiCi0tLQoKVGhpcyBkb2N1bWVudCBpbXBsZW1lbnRzIHRoZSBtZXRob2Qgc3VnZ2VzdGVkIGJ5IFBlbGxlcnQgZXQgYWwuIGZvciByZW1vdmluZyBjb21tb24gbGluZ3Vpc3RpYyBmZWF0dXJlcyBieSBzdWJ0cmFjdGluZyB0aGUgbWVhbiBlbWJlZGRpbmcgdmVjdG9yIGZyb20gZWFjaCBpdGVtIGVtYmVkZGluZy4KCmBgYHtyIHNldHVwLCBpbmNsdWRlPUZBTFNFLHdhcm5pbmc9RixtZXNzYWdlPUZ9CmtuaXRyOjpvcHRzX2NodW5rJHNldChlY2hvID0gVFJVRSwgZXJyb3IgPSBULCBtZXNzYWdlID0gRiwgd2FybmluZyA9IEYpCgojIExpYnJhcmllcwpsaWJyYXJ5KHRpZHl2ZXJzZSkKbGlicmFyeShhcnJvdykKbGlicmFyeShnbHVlKQpsaWJyYXJ5KGJyb29tKQpsaWJyYXJ5KGtuaXRyKQoKbW9kZWxfbmFtZSA9ICJJdGVtU2ltaWxhcml0eVRyYWluaW5nLTIwMjQwNTAyLXRyaWFsMTIiCnByZXRyYWluZWRfbW9kZWxfbmFtZSA9ICJhbGwtbXBuZXQtYmFzZS12MiIKCmRhdGFfcGF0aCA9IGdsdWUoIi4vZGF0YS9pbnRlcm1lZGlhdGUvIikKCnNldC5zZWVkKDQyKQpzb3VyY2UoImdsb2JhbF9mdW5jdGlvbnMuUiIpCmBgYAoKIyMgTG9hZCBEYXRhCgpgYGB7ciBsb2FkLWRhdGF9CiMgTG9hZCBodW1hbiBkYXRhCnJyX3ZhbGlkYXRpb25faHVtYW5fZGF0YSA9IGFycm93OjpyZWFkX2ZlYXRoZXIoCiAgZmlsZSA9IGZpbGUucGF0aChkYXRhX3BhdGgsIGdsdWUoInttb2RlbF9uYW1lfS5yYXcudmFsaWRhdGlvbi1zdHVkeS0yMDI0LTExLTAxLmh1bWFuLmZlYXRoZXIiKSkKKQoKIyBMb2FkIG1hcHBpbmcgZGF0YQpycl92YWxpZGF0aW9uX21hcHBpbmdfZGF0YSA9IGFycm93OjpyZWFkX2ZlYXRoZXIoCiAgZmlsZSA9IGZpbGUucGF0aChkYXRhX3BhdGgsIGdsdWUoInttb2RlbF9uYW1lfS5yYXcudmFsaWRhdGlvbi1zdHVkeS0yMDI0LTExLTAxLm1hcHBpbmcyLmZlYXRoZXIiKSkKKQoKIyBMb2FkIHByZS10cmFpbmVkIG1vZGVsIGVtYmVkZGluZ3MKcHRfcnJfdmFsaWRhdGlvbl9tYWNoaW5lX2RhdGEgPSByaW86OmltcG9ydCgiaHR0cHM6Ly9naXRodWIuY29tL3N5bnRoLXNjaWVuY2Uvc3VydmV5Ym90MzAwMC9yYXcvcmVmcy9oZWFkcy9tYWluL3ZhbGlkYXRpb25fc3R1ZHkvZW1iZWRkaW5nc19hbGwtbXBuZXQtYmFzZS12Mi5mZWF0aGVyIikKcHRfcnJfdmFsaWRhdGlvbl9tYWNoaW5lX2RhdGEgPC0gcHRfcnJfdmFsaWRhdGlvbl9tYWNoaW5lX2RhdGEgJT4lIAogIHJvd3dpc2UoKSAlPiUgCiAgbXV0YXRlKGVtYmVkX2lkID0gbGlzdCgxOmxlbmd0aChlbWJlZGRpbmdzKSkpICU+JSAKICB1bm5lc3QoY29scyA9IGMoZW1iZWRkaW5ncywgZW1iZWRfaWQpKSAlPiUgCiAgc2VsZWN0KC1pdGVtKSAlPiUgCiAgcGl2b3Rfd2lkZXIobmFtZXNfZnJvbSA9IGlkLCB2YWx1ZXNfZnJvbSA9IGVtYmVkZGluZ3MpICU+JSAKICBzZWxlY3QoLWVtYmVkX2lkKQoKIyBMb2FkIGZpbmUtdHVuZWQgbW9kZWwgZW1iZWRkaW5ncwpycl92YWxpZGF0aW9uX21hY2hpbmVfZGF0YSA9IHJpbzo6aW1wb3J0KCJodHRwczovL2dpdGh1Yi5jb20vc3ludGgtc2NpZW5jZS9zdXJ2ZXlib3QzMDAwL3Jhdy9yZWZzL2hlYWRzL21haW4vdmFsaWRhdGlvbl9zdHVkeS9lbWJlZGRpbmdzX3N1cnZleWJvdDMwMDAuZmVhdGhlciIpCnJyX3ZhbGlkYXRpb25fbWFjaGluZV9kYXRhIDwtIHJyX3ZhbGlkYXRpb25fbWFjaGluZV9kYXRhICU+JSAKICByb3d3aXNlKCkgJT4lIAogIG11dGF0ZShlbWJlZF9pZCA9IGxpc3QoMTpsZW5ndGgoZW1iZWRkaW5ncykpKSAlPiUgCiAgdW5uZXN0KGNvbHMgPSBjKGVtYmVkZGluZ3MsIGVtYmVkX2lkKSkgJT4lIAogIHNlbGVjdCgtaXRlbSkgJT4lIAogIHBpdm90X3dpZGVyKG5hbWVzX2Zyb20gPSBpZCwgdmFsdWVzX2Zyb20gPSBlbWJlZGRpbmdzKSAlPiUgCiAgc2VsZWN0KC1lbWJlZF9pZCkKCmNhdCgiTG9hZGVkIGVtYmVkZGluZ3M6XG4iKQpjYXQoIiAgUHJlLXRyYWluZWQgZGltZW5zaW9uczoiLCBucm93KHB0X3JyX3ZhbGlkYXRpb25fbWFjaGluZV9kYXRhKSwgIlxuIikKY2F0KCIgIFByZS10cmFpbmVkIGl0ZW1zOiIsIG5jb2wocHRfcnJfdmFsaWRhdGlvbl9tYWNoaW5lX2RhdGEpLCAiXG4iKQpjYXQoIiAgRmluZS10dW5lZCBkaW1lbnNpb25zOiIsIG5yb3cocnJfdmFsaWRhdGlvbl9tYWNoaW5lX2RhdGEpLCAiXG4iKQpjYXQoIiAgRmluZS10dW5lZCBpdGVtczoiLCBuY29sKHJyX3ZhbGlkYXRpb25fbWFjaGluZV9kYXRhKSwgIlxuIikKY2F0KCIgIEh1bWFuIGRhdGEgcmVzcG9uZGVudHM6IiwgbnJvdyhycl92YWxpZGF0aW9uX2h1bWFuX2RhdGEpLCAiXG4iKQpjYXQoIiAgSHVtYW4gZGF0YSBpdGVtczoiLCBuY29sKHJyX3ZhbGlkYXRpb25faHVtYW5fZGF0YSksICJcbiIpCmBgYAoKIyMgTWV0aG9kOiBNZWFuLUNlbnRlcmVkIEVtYmVkZGluZ3MKCkZvbGxvd2luZyBQZWxsZXJ0IGV0IGFsLiwgd2UgY29tcHV0ZSB0aGUgbWVhbiBlbWJlZGRpbmcgYWNyb3NzIGFsbCBpdGVtcyAodGhlICJxdWVzdGlvbm5haXJlIGVtYmVkZGluZyIpIGFuZCBzdWJ0cmFjdCBpdCBmcm9tIGVhY2ggaXRlbSBlbWJlZGRpbmc6ICRcbWF0aGJme3l9X2kgLSBcYmFye1xtYXRoYmZ7eX19JCBmb3IgaXRlbSAkaSQsIHdoZXJlICRcYmFye1xtYXRoYmZ7eX19ID0gXGZyYWN7MX17bn0gXHN1bV97aT0xfV57bn0gXG1hdGhiZnt5fV9pJC4KCldlIGltcGxlbWVudCB0d28gdmFyaWFudHM6CjEuICoqR2xvYmFsIGNlbnRlcmluZyoqOiBTdWJ0cmFjdCB0aGUgbWVhbiBhY3Jvc3MgYWxsIGl0ZW1zCjIuICoqUGVyLWluc3RydW1lbnQgY2VudGVyaW5nKio6IFN1YnRyYWN0IHRoZSBtZWFuIHdpdGhpbiBlYWNoIHF1ZXN0aW9ubmFpcmUvaW5zdHJ1bWVudCAoYXMgUGVsbGVydCBldCBhbC4gYWN0dWFsbHkgZGlkKQoKYGBge3IgY2VudGVyLWVtYmVkZGluZ3N9CiMgRnVuY3Rpb24gdG8gY2VudGVyIGVtYmVkZGluZ3MgYnkgc3VidHJhY3RpbmcgdGhlIG1lYW4KY2VudGVyX2VtYmVkZGluZ3NfZ2xvYmFsIDwtIGZ1bmN0aW9uKGVtYmVkZGluZ19tYXRyaXgpIHsKICAjIGVtYmVkZGluZ19tYXRyaXg6IHJvd3MgPSBkaW1lbnNpb25zLCBjb2x1bW5zID0gaXRlbXMKICAjIENvbXB1dGUgbWVhbiBhY3Jvc3MgYWxsIGl0ZW1zIChyb3cgbWVhbnMpCiAgbWVhbl9lbWJlZGRpbmcgPC0gcm93TWVhbnMoZW1iZWRkaW5nX21hdHJpeCwgbmEucm0gPSBUUlVFKQogIAogICMgU3VidHJhY3QgbWVhbiBmcm9tIGVhY2ggaXRlbQogIGNlbnRlcmVkIDwtIHN3ZWVwKGVtYmVkZGluZ19tYXRyaXgsIDEsIG1lYW5fZW1iZWRkaW5nLCAiLSIpCiAgCiAgcmV0dXJuKGNlbnRlcmVkKQp9CgojIEZ1bmN0aW9uIHRvIGNlbnRlciBlbWJlZGRpbmdzIHBlciBpbnN0cnVtZW50CmNlbnRlcl9lbWJlZGRpbmdzX2J5X2luc3RydW1lbnQgPC0gZnVuY3Rpb24oZW1iZWRkaW5nX21hdHJpeCwgbWFwcGluZ19kYXRhKSB7CiAgIyBlbWJlZGRpbmdfbWF0cml4OiByb3dzID0gZGltZW5zaW9ucywgY29sdW1ucyA9IGl0ZW1zCiAgIyBtYXBwaW5nX2RhdGE6IGRhdGFmcmFtZSB3aXRoICd2YXJpYWJsZScgYW5kICdpbnN0cnVtZW50JyBjb2x1bW5zCiAgCiAgY2VudGVyZWQgPC0gZW1iZWRkaW5nX21hdHJpeAogIAogICMgR2V0IHVuaXF1ZSBpbnN0cnVtZW50cwogIGluc3RydW1lbnRzIDwtIHVuaXF1ZShtYXBwaW5nX2RhdGEkaW5zdHJ1bWVudCkKICAKICBmb3IgKGluc3RyIGluIGluc3RydW1lbnRzKSB7CiAgICAjIEdldCBpdGVtcyBiZWxvbmdpbmcgdG8gdGhpcyBpbnN0cnVtZW50CiAgICBpdGVtX2lkcyA8LSBtYXBwaW5nX2RhdGEgJT4lIAogICAgICBmaWx0ZXIoaW5zdHJ1bWVudCA9PSBpbnN0cikgJT4lIAogICAgICBwdWxsKHZhcmlhYmxlKQogICAgCiAgICAjIEZpbmQgd2hpY2ggY29sdW1ucyBjb3JyZXNwb25kIHRvIHRoZXNlIGl0ZW1zCiAgICBpdGVtX2NvbHMgPC0gd2hpY2goY29sbmFtZXMoZW1iZWRkaW5nX21hdHJpeCkgJWluJSBpdGVtX2lkcykKICAgIAogICAgaWYgKGxlbmd0aChpdGVtX2NvbHMpID4gMCkgewogICAgICAjIENvbXB1dGUgbWVhbiBlbWJlZGRpbmcgZm9yIHRoaXMgaW5zdHJ1bWVudAogICAgICBpbnN0cl9tZWFuIDwtIHJvd01lYW5zKGVtYmVkZGluZ19tYXRyaXhbLCBpdGVtX2NvbHMsIGRyb3AgPSBGQUxTRV0sIG5hLnJtID0gVFJVRSkKICAgICAgCiAgICAgICMgU3VidHJhY3QgaW5zdHJ1bWVudCBtZWFuIGZyb20gZWFjaCBpdGVtIGluIHRoaXMgaW5zdHJ1bWVudAogICAgICBjZW50ZXJlZFssIGl0ZW1fY29sc10gPC0gc3dlZXAoZW1iZWRkaW5nX21hdHJpeFssIGl0ZW1fY29scywgZHJvcCA9IEZBTFNFXSwgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAxLCBpbnN0cl9tZWFuLCAiLSIpCiAgICB9CiAgfQogIAogIHJldHVybihjZW50ZXJlZCkKfQoKIyBHbG9iYWwgY2VudGVyaW5nCnB0X2NlbnRlcmVkX2dsb2JhbCA8LSBjZW50ZXJfZW1iZWRkaW5nc19nbG9iYWwocHRfcnJfdmFsaWRhdGlvbl9tYWNoaW5lX2RhdGEpCmZ0X2NlbnRlcmVkX2dsb2JhbCA8LSBjZW50ZXJfZW1iZWRkaW5nc19nbG9iYWwocnJfdmFsaWRhdGlvbl9tYWNoaW5lX2RhdGEpCgojIFBlci1pbnN0cnVtZW50IGNlbnRlcmluZwpwdF9jZW50ZXJlZF9pbnN0cnVtZW50IDwtIGNlbnRlcl9lbWJlZGRpbmdzX2J5X2luc3RydW1lbnQocHRfcnJfdmFsaWRhdGlvbl9tYWNoaW5lX2RhdGEsIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcnJfdmFsaWRhdGlvbl9tYXBwaW5nX2RhdGEpCmZ0X2NlbnRlcmVkX2luc3RydW1lbnQgPC0gY2VudGVyX2VtYmVkZGluZ3NfYnlfaW5zdHJ1bWVudChycl92YWxpZGF0aW9uX21hY2hpbmVfZGF0YSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHJyX3ZhbGlkYXRpb25fbWFwcGluZ19kYXRhKQoKY2F0KCJDZW50ZXJlZCBlbWJlZGRpbmdzIGNyZWF0ZWRcbiIpCmNhdCgiR2xvYmFsIGNlbnRlcmluZzpcbiIpCmNhdCgiICBQcmUtdHJhaW5lZDogbWVhbiBvZiBtZWFucyA9IiwgbWVhbihyb3dNZWFucyhwdF9jZW50ZXJlZF9nbG9iYWwpKSwgIihzaG91bGQgYmUgfjApXG4iKQpjYXQoIiAgRmluZS10dW5lZDogbWVhbiBvZiBtZWFucyA9IiwgbWVhbihyb3dNZWFucyhmdF9jZW50ZXJlZF9nbG9iYWwpKSwgIihzaG91bGQgYmUgfjApXG4iKQpjYXQoIlxuUGVyLWluc3RydW1lbnQgY2VudGVyaW5nOlxuIikKY2F0KCIgIFByZS10cmFpbmVkOiBvdmVyYWxsIG1lYW4gPSIsIG1lYW4ocm93TWVhbnMocHRfY2VudGVyZWRfaW5zdHJ1bWVudCkpLCAiXG4iKQpjYXQoIiAgRmluZS10dW5lZDogb3ZlcmFsbCBtZWFuID0iLCBtZWFuKHJvd01lYW5zKGZ0X2NlbnRlcmVkX2luc3RydW1lbnQpKSwgIlxuIikKY2F0KCIgIE51bWJlciBvZiBpbnN0cnVtZW50czoiLCBuX2Rpc3RpbmN0KHJyX3ZhbGlkYXRpb25fbWFwcGluZ19kYXRhJGluc3RydW1lbnQpLCAiXG4iKQpgYGAKCiMjIENvbXB1dGUgQ29ycmVsYXRpb25zCgpOb3cgd2UgY29tcHV0ZSBwYWlyd2lzZSBjb3JyZWxhdGlvbnMgKGNvc2luZSBzaW1pbGFyaXRpZXMpIHVzaW5nIHRoZSBvcmlnaW5hbCwgZ2xvYmFsbHktY2VudGVyZWQsIGFuZCBwZXItaW5zdHJ1bWVudC1jZW50ZXJlZCBlbWJlZGRpbmdzLgoKYGBge3IgY29tcHV0ZS1jb3JyZWxhdGlvbnN9CiMgT3JpZ2luYWwgY29ycmVsYXRpb25zCnB0X29yaWdpbmFsX3BhaXJzIDwtIGpvaW5fcGFpcndpc2VfY29ycmVsYXRpb24ocnJfdmFsaWRhdGlvbl9odW1hbl9kYXRhLCBwdF9ycl92YWxpZGF0aW9uX21hY2hpbmVfZGF0YSkKZnRfb3JpZ2luYWxfcGFpcnMgPC0gam9pbl9wYWlyd2lzZV9jb3JyZWxhdGlvbihycl92YWxpZGF0aW9uX2h1bWFuX2RhdGEsIHJyX3ZhbGlkYXRpb25fbWFjaGluZV9kYXRhKQoKIyBHbG9iYWxseSBtZWFuLWNlbnRlcmVkIGNvcnJlbGF0aW9ucwpwdF9jZW50ZXJlZF9nbG9iYWxfcGFpcnMgPC0gam9pbl9wYWlyd2lzZV9jb3JyZWxhdGlvbihycl92YWxpZGF0aW9uX2h1bWFuX2RhdGEsIGFzLmRhdGEuZnJhbWUocHRfY2VudGVyZWRfZ2xvYmFsKSkKZnRfY2VudGVyZWRfZ2xvYmFsX3BhaXJzIDwtIGpvaW5fcGFpcndpc2VfY29ycmVsYXRpb24ocnJfdmFsaWRhdGlvbl9odW1hbl9kYXRhLCBhcy5kYXRhLmZyYW1lKGZ0X2NlbnRlcmVkX2dsb2JhbCkpCgojIFBlci1pbnN0cnVtZW50IG1lYW4tY2VudGVyZWQgY29ycmVsYXRpb25zCnB0X2NlbnRlcmVkX2luc3RydW1lbnRfcGFpcnMgPC0gam9pbl9wYWlyd2lzZV9jb3JyZWxhdGlvbihycl92YWxpZGF0aW9uX2h1bWFuX2RhdGEsIGFzLmRhdGEuZnJhbWUocHRfY2VudGVyZWRfaW5zdHJ1bWVudCkpCmZ0X2NlbnRlcmVkX2luc3RydW1lbnRfcGFpcnMgPC0gam9pbl9wYWlyd2lzZV9jb3JyZWxhdGlvbihycl92YWxpZGF0aW9uX2h1bWFuX2RhdGEsIGFzLmRhdGEuZnJhbWUoZnRfY2VudGVyZWRfaW5zdHJ1bWVudCkpCgpjYXQoIkNvbXB1dGVkIHBhaXJ3aXNlIGNvcnJlbGF0aW9uczpcbiIpCmNhdCgiICBOdW1iZXIgb2YgaXRlbSBwYWlyczoiLCBucm93KHB0X29yaWdpbmFsX3BhaXJzKSwgIlxuIikKYGBgCgojIyBSZXN1bHRzOiBBY2N1cmFjeSBDb21wYXJpc29uCgpgYGB7ciBhY2N1cmFjeS1jb21wYXJpc29ufQojIFByZS10cmFpbmVkIG1vZGVsCnB0X29yaWdpbmFsX2FjY3VyYWN5IDwtIGJyb29tOjp0aWR5KGNvci50ZXN0KHB0X29yaWdpbmFsX3BhaXJzJGVtcGlyaWNhbF9yLCBwdF9vcmlnaW5hbF9wYWlycyRzeW50aGV0aWNfcikpCnB0X2NlbnRlcmVkX2dsb2JhbF9hY2N1cmFjeSA8LSBicm9vbTo6dGlkeShjb3IudGVzdChwdF9jZW50ZXJlZF9nbG9iYWxfcGFpcnMkZW1waXJpY2FsX3IsIHB0X2NlbnRlcmVkX2dsb2JhbF9wYWlycyRzeW50aGV0aWNfcikpCnB0X2NlbnRlcmVkX2luc3RydW1lbnRfYWNjdXJhY3kgPC0gYnJvb206OnRpZHkoY29yLnRlc3QocHRfY2VudGVyZWRfaW5zdHJ1bWVudF9wYWlycyRlbXBpcmljYWxfciwgcHRfY2VudGVyZWRfaW5zdHJ1bWVudF9wYWlycyRzeW50aGV0aWNfcikpCgojIEZpbmUtdHVuZWQgbW9kZWwKZnRfb3JpZ2luYWxfYWNjdXJhY3kgPC0gYnJvb206OnRpZHkoY29yLnRlc3QoZnRfb3JpZ2luYWxfcGFpcnMkZW1waXJpY2FsX3IsIGZ0X29yaWdpbmFsX3BhaXJzJHN5bnRoZXRpY19yKSkKZnRfY2VudGVyZWRfZ2xvYmFsX2FjY3VyYWN5IDwtIGJyb29tOjp0aWR5KGNvci50ZXN0KGZ0X2NlbnRlcmVkX2dsb2JhbF9wYWlycyRlbXBpcmljYWxfciwgZnRfY2VudGVyZWRfZ2xvYmFsX3BhaXJzJHN5bnRoZXRpY19yKSkKZnRfY2VudGVyZWRfaW5zdHJ1bWVudF9hY2N1cmFjeSA8LSBicm9vbTo6dGlkeShjb3IudGVzdChmdF9jZW50ZXJlZF9pbnN0cnVtZW50X3BhaXJzJGVtcGlyaWNhbF9yLCBmdF9jZW50ZXJlZF9pbnN0cnVtZW50X3BhaXJzJHN5bnRoZXRpY19yKSkKCiMgQ3JlYXRlIGNvbXBhcmlzb24gdGFibGUKcmVzdWx0cyA8LSBiaW5kX3Jvd3MoCiAgcHRfb3JpZ2luYWxfYWNjdXJhY3kgJT4lIAogICAgbXV0YXRlKG1vZGVsID0gIlByZS10cmFpbmVkIChTQkVSVCkiLCBtZXRob2QgPSAiT3JpZ2luYWwiKSAlPiUKICAgIHNlbGVjdChtb2RlbCwgbWV0aG9kLCBhY2N1cmFjeSA9IGVzdGltYXRlLCBjb25mLmxvdywgY29uZi5oaWdoKSwKICBwdF9jZW50ZXJlZF9nbG9iYWxfYWNjdXJhY3kgJT4lIAogICAgbXV0YXRlKG1vZGVsID0gIlByZS10cmFpbmVkIChTQkVSVCkiLCBtZXRob2QgPSAiR2xvYmFsIG1lYW4tY2VudGVyZWQiKSAlPiUKICAgIHNlbGVjdChtb2RlbCwgbWV0aG9kLCBhY2N1cmFjeSA9IGVzdGltYXRlLCBjb25mLmxvdywgY29uZi5oaWdoKSwKICBwdF9jZW50ZXJlZF9pbnN0cnVtZW50X2FjY3VyYWN5ICU+JSAKICAgIG11dGF0ZShtb2RlbCA9ICJQcmUtdHJhaW5lZCAoU0JFUlQpIiwgbWV0aG9kID0gIlBlci1pbnN0cnVtZW50IG1lYW4tY2VudGVyZWQiKSAlPiUKICAgIHNlbGVjdChtb2RlbCwgbWV0aG9kLCBhY2N1cmFjeSA9IGVzdGltYXRlLCBjb25mLmxvdywgY29uZi5oaWdoKSwKICBmdF9vcmlnaW5hbF9hY2N1cmFjeSAlPiUgCiAgICBtdXRhdGUobW9kZWwgPSAiRmluZS10dW5lZCAoU3VydmV5Qm90MzAwMCkiLCBtZXRob2QgPSAiT3JpZ2luYWwiKSAlPiUKICAgIHNlbGVjdChtb2RlbCwgbWV0aG9kLCBhY2N1cmFjeSA9IGVzdGltYXRlLCBjb25mLmxvdywgY29uZi5oaWdoKSwKICBmdF9jZW50ZXJlZF9nbG9iYWxfYWNjdXJhY3kgJT4lIAogICAgbXV0YXRlKG1vZGVsID0gIkZpbmUtdHVuZWQgKFN1cnZleUJvdDMwMDApIiwgbWV0aG9kID0gIkdsb2JhbCBtZWFuLWNlbnRlcmVkIikgJT4lCiAgICBzZWxlY3QobW9kZWwsIG1ldGhvZCwgYWNjdXJhY3kgPSBlc3RpbWF0ZSwgY29uZi5sb3csIGNvbmYuaGlnaCksCiAgZnRfY2VudGVyZWRfaW5zdHJ1bWVudF9hY2N1cmFjeSAlPiUgCiAgICBtdXRhdGUobW9kZWwgPSAiRmluZS10dW5lZCAoU3VydmV5Qm90MzAwMCkiLCBtZXRob2QgPSAiUGVyLWluc3RydW1lbnQgbWVhbi1jZW50ZXJlZCIpICU+JQogICAgc2VsZWN0KG1vZGVsLCBtZXRob2QsIGFjY3VyYWN5ID0gZXN0aW1hdGUsIGNvbmYubG93LCBjb25mLmhpZ2gpCikKCmthYmxlKHJlc3VsdHMsIGRpZ2l0cyA9IDMsIGNhcHRpb24gPSAiTWFuaWZlc3QgYWNjdXJhY3kgKFBlYXJzb24gcikgYmV0d2VlbiBzeW50aGV0aWMgYW5kIGVtcGlyaWNhbCBpdGVtIGNvcnJlbGF0aW9ucyIpCmBgYAoKIyMgSW50ZXJwcmV0YXRpb24KCmBgYHtyIGludGVycHJldGF0aW9ufQojIENhbGN1bGF0ZSBpbXByb3ZlbWVudHMKcHRfaW1wcm92ZW1lbnRfZ2xvYmFsIDwtIHB0X2NlbnRlcmVkX2dsb2JhbF9hY2N1cmFjeSRlc3RpbWF0ZSAtIHB0X29yaWdpbmFsX2FjY3VyYWN5JGVzdGltYXRlCnB0X2ltcHJvdmVtZW50X2luc3RydW1lbnQgPC0gcHRfY2VudGVyZWRfaW5zdHJ1bWVudF9hY2N1cmFjeSRlc3RpbWF0ZSAtIHB0X29yaWdpbmFsX2FjY3VyYWN5JGVzdGltYXRlCmZ0X2ltcHJvdmVtZW50X2dsb2JhbCA8LSBmdF9jZW50ZXJlZF9nbG9iYWxfYWNjdXJhY3kkZXN0aW1hdGUgLSBmdF9vcmlnaW5hbF9hY2N1cmFjeSRlc3RpbWF0ZQpmdF9pbXByb3ZlbWVudF9pbnN0cnVtZW50IDwtIGZ0X2NlbnRlcmVkX2luc3RydW1lbnRfYWNjdXJhY3kkZXN0aW1hdGUgLSBmdF9vcmlnaW5hbF9hY2N1cmFjeSRlc3RpbWF0ZQoKY2F0KCJcbiIpCmNhdCgiQ2hhbmdlIGluIGFjY3VyYWN5IGFmdGVyIG1lYW4tY2VudGVyaW5nOlxuIikKY2F0KCJcblByZS10cmFpbmVkIG1vZGVsOlxuIikKY2F0KCIgIEdsb2JhbCBjZW50ZXJpbmc6ICAgICAgICIsIHNwcmludGYoIiUrLjNmIiwgcHRfaW1wcm92ZW1lbnRfZ2xvYmFsKSwgIlxuIikKY2F0KCIgIFBlci1pbnN0cnVtZW50IGNlbnRlcmluZzoiLCBzcHJpbnRmKCIlKy4zZiIsIHB0X2ltcHJvdmVtZW50X2luc3RydW1lbnQpLCAiXG4iKQpjYXQoIlxuRmluZS10dW5lZCBtb2RlbDpcbiIpCmNhdCgiICBHbG9iYWwgY2VudGVyaW5nOiAgICAgICAiLCBzcHJpbnRmKCIlKy4zZiIsIGZ0X2ltcHJvdmVtZW50X2dsb2JhbCksICJcbiIpCmNhdCgiICBQZXItaW5zdHJ1bWVudCBjZW50ZXJpbmc6Iiwgc3ByaW50ZigiJSsuM2YiLCBmdF9pbXByb3ZlbWVudF9pbnN0cnVtZW50KSwgIlxuIikKY2F0KCJcbiIpCgojIERldGVybWluZSBiZXN0IG1ldGhvZCBmb3IgZWFjaCBtb2RlbApwdF9iZXN0IDwtIGMoIm9yaWdpbmFsIiwgImdsb2JhbCIsICJpbnN0cnVtZW50Iilbd2hpY2gubWF4KGMocHRfb3JpZ2luYWxfYWNjdXJhY3kkZXN0aW1hdGUsIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcHRfY2VudGVyZWRfZ2xvYmFsX2FjY3VyYWN5JGVzdGltYXRlLCAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHB0X2NlbnRlcmVkX2luc3RydW1lbnRfYWNjdXJhY3kkZXN0aW1hdGUpKV0KZnRfYmVzdCA8LSBjKCJvcmlnaW5hbCIsICJnbG9iYWwiLCAiaW5zdHJ1bWVudCIpW3doaWNoLm1heChjKGZ0X29yaWdpbmFsX2FjY3VyYWN5JGVzdGltYXRlLCAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGZ0X2NlbnRlcmVkX2dsb2JhbF9hY2N1cmFjeSRlc3RpbWF0ZSwgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBmdF9jZW50ZXJlZF9pbnN0cnVtZW50X2FjY3VyYWN5JGVzdGltYXRlKSldCgpjYXQoIkJlc3QgcGVyZm9ybWluZyBtZXRob2Q6XG4iKQpjYXQoIiAgUHJlLXRyYWluZWQgbW9kZWw6ICIsIHB0X2Jlc3QsICJcbiIpCmNhdCgiICBGaW5lLXR1bmVkIG1vZGVsOiAgIiwgZnRfYmVzdCwgIlxuIikKYGBgCgojIyBTY2F0dGVyIFBsb3RzCgojIyMgUHJlLXRyYWluZWQgTW9kZWwKCmBgYHtyIHB0LXNjYXR0ZXIsIGZpZy53aWR0aD0xNSwgZmlnLmhlaWdodD01fQpsaWJyYXJ5KHBhdGNod29yaykKCnAxIDwtIGdncGxvdChwdF9vcmlnaW5hbF9wYWlycywgYWVzKHN5bnRoZXRpY19yLCBlbXBpcmljYWxfcikpICsKICBnZW9tX2FibGluZShsaW5ldHlwZSA9ICJkYXNoZWQiKSArCiAgZ2VvbV9wb2ludChjb2xvciA9ICIjMDBBMEIwIiwgYWxwaGEgPSAwLjAzLCBzaXplID0gMSkgKwogIGdlb21fc21vb3RoKG1ldGhvZCA9ICJsbSIsIGNvbG9yID0gIiNhNDg1MDAiLCBmaWxsID0gIiNFREM5NTEiKSArCiAgYW5ub3RhdGUoInRleHQiLCB4ID0gLTEsIHkgPSAwLjk4LCBoanVzdCA9IDAsIHZqdXN0ID0gMSwgc2l6ZSA9IDMsCiAgICAgICAgICAgbGFiZWwgPSBzcHJpbnRmKCJyID0gJS4zZiBbJS4zZiwgJS4zZl0iLCAKICAgICAgICAgICAgICAgICAgICAgICAgICBwdF9vcmlnaW5hbF9hY2N1cmFjeSRlc3RpbWF0ZSwKICAgICAgICAgICAgICAgICAgICAgICAgICBwdF9vcmlnaW5hbF9hY2N1cmFjeSRjb25mLmxvdywKICAgICAgICAgICAgICAgICAgICAgICAgICBwdF9vcmlnaW5hbF9hY2N1cmFjeSRjb25mLmhpZ2gpKSArCiAgeGxhYigiU3ludGhldGljIGludGVyLWl0ZW0gY29ycmVsYXRpb24iKSArCiAgeWxhYigiRW1waXJpY2FsIikgKwogIGdndGl0bGUoIk9yaWdpbmFsIikgKwogIGNvb3JkX2ZpeGVkKHhsaW0gPSBjKC0xLCAxKSwgeWxpbSA9IGMoLTEsIDEpKSArCiAgdGhlbWVfYncoKQoKcDIgPC0gZ2dwbG90KHB0X2NlbnRlcmVkX2dsb2JhbF9wYWlycywgYWVzKHN5bnRoZXRpY19yLCBlbXBpcmljYWxfcikpICsKICBnZW9tX2FibGluZShsaW5ldHlwZSA9ICJkYXNoZWQiKSArCiAgZ2VvbV9wb2ludChjb2xvciA9ICIjMDBBMEIwIiwgYWxwaGEgPSAwLjAzLCBzaXplID0gMSkgKwogIGdlb21fc21vb3RoKG1ldGhvZCA9ICJsbSIsIGNvbG9yID0gIiNhNDg1MDAiLCBmaWxsID0gIiNFREM5NTEiKSArCiAgYW5ub3RhdGUoInRleHQiLCB4ID0gLTEsIHkgPSAwLjk4LCBoanVzdCA9IDAsIHZqdXN0ID0gMSwgc2l6ZSA9IDMsCiAgICAgICAgICAgbGFiZWwgPSBzcHJpbnRmKCJyID0gJS4zZiBbJS4zZiwgJS4zZl0iLCAKICAgICAgICAgICAgICAgICAgICAgICAgICBwdF9jZW50ZXJlZF9nbG9iYWxfYWNjdXJhY3kkZXN0aW1hdGUsCiAgICAgICAgICAgICAgICAgICAgICAgICAgcHRfY2VudGVyZWRfZ2xvYmFsX2FjY3VyYWN5JGNvbmYubG93LAogICAgICAgICAgICAgICAgICAgICAgICAgIHB0X2NlbnRlcmVkX2dsb2JhbF9hY2N1cmFjeSRjb25mLmhpZ2gpKSArCiAgeGxhYigiU3ludGhldGljIGludGVyLWl0ZW0gY29ycmVsYXRpb24iKSArCiAgeWxhYigiRW1waXJpY2FsIikgKwogIGdndGl0bGUoIkdsb2JhbCBtZWFuLWNlbnRlcmVkIikgKwogIGNvb3JkX2ZpeGVkKHhsaW0gPSBjKC0xLCAxKSwgeWxpbSA9IGMoLTEsIDEpKSArCiAgdGhlbWVfYncoKQoKcDMgPC0gZ2dwbG90KHB0X2NlbnRlcmVkX2luc3RydW1lbnRfcGFpcnMsIGFlcyhzeW50aGV0aWNfciwgZW1waXJpY2FsX3IpKSArCiAgZ2VvbV9hYmxpbmUobGluZXR5cGUgPSAiZGFzaGVkIikgKwogIGdlb21fcG9pbnQoY29sb3IgPSAiIzAwQTBCMCIsIGFscGhhID0gMC4wMywgc2l6ZSA9IDEpICsKICBnZW9tX3Ntb290aChtZXRob2QgPSAibG0iLCBjb2xvciA9ICIjYTQ4NTAwIiwgZmlsbCA9ICIjRURDOTUxIikgKwogIGFubm90YXRlKCJ0ZXh0IiwgeCA9IC0xLCB5ID0gMC45OCwgaGp1c3QgPSAwLCB2anVzdCA9IDEsIHNpemUgPSAzLAogICAgICAgICAgIGxhYmVsID0gc3ByaW50ZigiciA9ICUuM2YgWyUuM2YsICUuM2ZdIiwgCiAgICAgICAgICAgICAgICAgICAgICAgICAgcHRfY2VudGVyZWRfaW5zdHJ1bWVudF9hY2N1cmFjeSRlc3RpbWF0ZSwKICAgICAgICAgICAgICAgICAgICAgICAgICBwdF9jZW50ZXJlZF9pbnN0cnVtZW50X2FjY3VyYWN5JGNvbmYubG93LAogICAgICAgICAgICAgICAgICAgICAgICAgIHB0X2NlbnRlcmVkX2luc3RydW1lbnRfYWNjdXJhY3kkY29uZi5oaWdoKSkgKwogIHhsYWIoIlN5bnRoZXRpYyBpbnRlci1pdGVtIGNvcnJlbGF0aW9uIikgKwogIHlsYWIoIkVtcGlyaWNhbCIpICsKICBnZ3RpdGxlKCJQZXItaW5zdHJ1bWVudCBtZWFuLWNlbnRlcmVkIikgKwogIGNvb3JkX2ZpeGVkKHhsaW0gPSBjKC0xLCAxKSwgeWxpbSA9IGMoLTEsIDEpKSArCiAgdGhlbWVfYncoKQoKcDEgKyBwMiArIHAzICsgcGxvdF9hbm5vdGF0aW9uKHRpdGxlID0gIlByZS10cmFpbmVkIE1vZGVsIChTQkVSVCkiKQpgYGAKCiMjIyBGaW5lLXR1bmVkIE1vZGVsCgpgYGB7ciBmdC1zY2F0dGVyLCBmaWcud2lkdGg9MTUsIGZpZy5oZWlnaHQ9NX0KcDQgPC0gZ2dwbG90KGZ0X29yaWdpbmFsX3BhaXJzLCBhZXMoc3ludGhldGljX3IsIGVtcGlyaWNhbF9yKSkgKwogIGdlb21fYWJsaW5lKGxpbmV0eXBlID0gImRhc2hlZCIpICsKICBnZW9tX3BvaW50KGNvbG9yID0gIiMwMEEwQjAiLCBhbHBoYSA9IDAuMDMsIHNpemUgPSAxKSArCiAgZ2VvbV9zbW9vdGgobWV0aG9kID0gImxtIiwgY29sb3IgPSAiI2E0ODUwMCIsIGZpbGwgPSAiI0VEQzk1MSIpICsKICBhbm5vdGF0ZSgidGV4dCIsIHggPSAtMSwgeSA9IDAuOTgsIGhqdXN0ID0gMCwgdmp1c3QgPSAxLCBzaXplID0gMywKICAgICAgICAgICBsYWJlbCA9IHNwcmludGYoInIgPSAlLjNmIFslLjNmLCAlLjNmXSIsIAogICAgICAgICAgICAgICAgICAgICAgICAgIGZ0X29yaWdpbmFsX2FjY3VyYWN5JGVzdGltYXRlLAogICAgICAgICAgICAgICAgICAgICAgICAgIGZ0X29yaWdpbmFsX2FjY3VyYWN5JGNvbmYubG93LAogICAgICAgICAgICAgICAgICAgICAgICAgIGZ0X29yaWdpbmFsX2FjY3VyYWN5JGNvbmYuaGlnaCkpICsKICB4bGFiKCJTeW50aGV0aWMgaW50ZXItaXRlbSBjb3JyZWxhdGlvbiIpICsKICB5bGFiKCJFbXBpcmljYWwiKSArCiAgZ2d0aXRsZSgiT3JpZ2luYWwiKSArCiAgY29vcmRfZml4ZWQoeGxpbSA9IGMoLTEsIDEpLCB5bGltID0gYygtMSwgMSkpICsKICB0aGVtZV9idygpCgpwNSA8LSBnZ3Bsb3QoZnRfY2VudGVyZWRfZ2xvYmFsX3BhaXJzLCBhZXMoc3ludGhldGljX3IsIGVtcGlyaWNhbF9yKSkgKwogIGdlb21fYWJsaW5lKGxpbmV0eXBlID0gImRhc2hlZCIpICsKICBnZW9tX3BvaW50KGNvbG9yID0gIiMwMEEwQjAiLCBhbHBoYSA9IDAuMDMsIHNpemUgPSAxKSArCiAgZ2VvbV9zbW9vdGgobWV0aG9kID0gImxtIiwgY29sb3IgPSAiI2E0ODUwMCIsIGZpbGwgPSAiI0VEQzk1MSIpICsKICBhbm5vdGF0ZSgidGV4dCIsIHggPSAtMSwgeSA9IDAuOTgsIGhqdXN0ID0gMCwgdmp1c3QgPSAxLCBzaXplID0gMywKICAgICAgICAgICBsYWJlbCA9IHNwcmludGYoInIgPSAlLjNmIFslLjNmLCAlLjNmXSIsIAogICAgICAgICAgICAgICAgICAgICAgICAgIGZ0X2NlbnRlcmVkX2dsb2JhbF9hY2N1cmFjeSRlc3RpbWF0ZSwKICAgICAgICAgICAgICAgICAgICAgICAgICBmdF9jZW50ZXJlZF9nbG9iYWxfYWNjdXJhY3kkY29uZi5sb3csCiAgICAgICAgICAgICAgICAgICAgICAgICAgZnRfY2VudGVyZWRfZ2xvYmFsX2FjY3VyYWN5JGNvbmYuaGlnaCkpICsKICB4bGFiKCJTeW50aGV0aWMgaW50ZXItaXRlbSBjb3JyZWxhdGlvbiIpICsKICB5bGFiKCJFbXBpcmljYWwiKSArCiAgZ2d0aXRsZSgiR2xvYmFsIG1lYW4tY2VudGVyZWQiKSArCiAgY29vcmRfZml4ZWQoeGxpbSA9IGMoLTEsIDEpLCB5bGltID0gYygtMSwgMSkpICsKICB0aGVtZV9idygpCgpwNiA8LSBnZ3Bsb3QoZnRfY2VudGVyZWRfaW5zdHJ1bWVudF9wYWlycywgYWVzKHN5bnRoZXRpY19yLCBlbXBpcmljYWxfcikpICsKICBnZW9tX2FibGluZShsaW5ldHlwZSA9ICJkYXNoZWQiKSArCiAgZ2VvbV9wb2ludChjb2xvciA9ICIjMDBBMEIwIiwgYWxwaGEgPSAwLjAzLCBzaXplID0gMSkgKwogIGdlb21fc21vb3RoKG1ldGhvZCA9ICJsbSIsIGNvbG9yID0gIiNhNDg1MDAiLCBmaWxsID0gIiNFREM5NTEiKSArCiAgYW5ub3RhdGUoInRleHQiLCB4ID0gLTEsIHkgPSAwLjk4LCBoanVzdCA9IDAsIHZqdXN0ID0gMSwgc2l6ZSA9IDMsCiAgICAgICAgICAgbGFiZWwgPSBzcHJpbnRmKCJyID0gJS4zZiBbJS4zZiwgJS4zZl0iLCAKICAgICAgICAgICAgICAgICAgICAgICAgICBmdF9jZW50ZXJlZF9pbnN0cnVtZW50X2FjY3VyYWN5JGVzdGltYXRlLAogICAgICAgICAgICAgICAgICAgICAgICAgIGZ0X2NlbnRlcmVkX2luc3RydW1lbnRfYWNjdXJhY3kkY29uZi5sb3csCiAgICAgICAgICAgICAgICAgICAgICAgICAgZnRfY2VudGVyZWRfaW5zdHJ1bWVudF9hY2N1cmFjeSRjb25mLmhpZ2gpKSArCiAgeGxhYigiU3ludGhldGljIGludGVyLWl0ZW0gY29ycmVsYXRpb24iKSArCiAgeWxhYigiRW1waXJpY2FsIikgKwogIGdndGl0bGUoIlBlci1pbnN0cnVtZW50IG1lYW4tY2VudGVyZWQiKSArCiAgY29vcmRfZml4ZWQoeGxpbSA9IGMoLTEsIDEpLCB5bGltID0gYygtMSwgMSkpICsKICB0aGVtZV9idygpCgpwNCArIHA1ICsgcDYgKyBwbG90X2Fubm90YXRpb24odGl0bGUgPSAiRmluZS10dW5lZCBNb2RlbCAoU3VydmV5Qm90MzAwMCkiKQpgYGAKCiMjIFN1bW1hcnkgU3RhdGlzdGljcwoKYGBge3Igc3VtbWFyeS1zdGF0c30KIyBTdW1tYXJ5IHN0YXRpc3RpY3MgZm9yIHN5bnRoZXRpYyBjb3JyZWxhdGlvbnMKc3VtbWFyeV9zdGF0cyA8LSBiaW5kX3Jvd3MoCiAgcHRfb3JpZ2luYWxfcGFpcnMgJT4lIAogICAgc3VtbWFyaXNlKAogICAgICBtb2RlbCA9ICJQcmUtdHJhaW5lZCIsCiAgICAgIG1ldGhvZCA9ICJPcmlnaW5hbCIsCiAgICAgIG1lYW5fc3ludGhldGljID0gbWVhbihzeW50aGV0aWNfciksCiAgICAgIHNkX3N5bnRoZXRpYyA9IHNkKHN5bnRoZXRpY19yKSwKICAgICAgbWVhbl9hYnNfc3ludGhldGljID0gbWVhbihhYnMoc3ludGhldGljX3IpKQogICAgKSwKICBwdF9jZW50ZXJlZF9nbG9iYWxfcGFpcnMgJT4lIAogICAgc3VtbWFyaXNlKAogICAgICBtb2RlbCA9ICJQcmUtdHJhaW5lZCIsCiAgICAgIG1ldGhvZCA9ICJHbG9iYWwgbWVhbi1jZW50ZXJlZCIsCiAgICAgIG1lYW5fc3ludGhldGljID0gbWVhbihzeW50aGV0aWNfciksCiAgICAgIHNkX3N5bnRoZXRpYyA9IHNkKHN5bnRoZXRpY19yKSwKICAgICAgbWVhbl9hYnNfc3ludGhldGljID0gbWVhbihhYnMoc3ludGhldGljX3IpKQogICAgKSwKICBwdF9jZW50ZXJlZF9pbnN0cnVtZW50X3BhaXJzICU+JSAKICAgIHN1bW1hcmlzZSgKICAgICAgbW9kZWwgPSAiUHJlLXRyYWluZWQiLAogICAgICBtZXRob2QgPSAiUGVyLWluc3RydW1lbnQgbWVhbi1jZW50ZXJlZCIsCiAgICAgIG1lYW5fc3ludGhldGljID0gbWVhbihzeW50aGV0aWNfciksCiAgICAgIHNkX3N5bnRoZXRpYyA9IHNkKHN5bnRoZXRpY19yKSwKICAgICAgbWVhbl9hYnNfc3ludGhldGljID0gbWVhbihhYnMoc3ludGhldGljX3IpKQogICAgKSwKICBmdF9vcmlnaW5hbF9wYWlycyAlPiUgCiAgICBzdW1tYXJpc2UoCiAgICAgIG1vZGVsID0gIkZpbmUtdHVuZWQiLAogICAgICBtZXRob2QgPSAiT3JpZ2luYWwiLAogICAgICBtZWFuX3N5bnRoZXRpYyA9IG1lYW4oc3ludGhldGljX3IpLAogICAgICBzZF9zeW50aGV0aWMgPSBzZChzeW50aGV0aWNfciksCiAgICAgIG1lYW5fYWJzX3N5bnRoZXRpYyA9IG1lYW4oYWJzKHN5bnRoZXRpY19yKSkKICAgICksCiAgZnRfY2VudGVyZWRfZ2xvYmFsX3BhaXJzICU+JSAKICAgIHN1bW1hcmlzZSgKICAgICAgbW9kZWwgPSAiRmluZS10dW5lZCIsCiAgICAgIG1ldGhvZCA9ICJHbG9iYWwgbWVhbi1jZW50ZXJlZCIsCiAgICAgIG1lYW5fc3ludGhldGljID0gbWVhbihzeW50aGV0aWNfciksCiAgICAgIHNkX3N5bnRoZXRpYyA9IHNkKHN5bnRoZXRpY19yKSwKICAgICAgbWVhbl9hYnNfc3ludGhldGljID0gbWVhbihhYnMoc3ludGhldGljX3IpKQogICAgKSwKICBmdF9jZW50ZXJlZF9pbnN0cnVtZW50X3BhaXJzICU+JSAKICAgIHN1bW1hcmlzZSgKICAgICAgbW9kZWwgPSAiRmluZS10dW5lZCIsCiAgICAgIG1ldGhvZCA9ICJQZXItaW5zdHJ1bWVudCBtZWFuLWNlbnRlcmVkIiwKICAgICAgbWVhbl9zeW50aGV0aWMgPSBtZWFuKHN5bnRoZXRpY19yKSwKICAgICAgc2Rfc3ludGhldGljID0gc2Qoc3ludGhldGljX3IpLAogICAgICBtZWFuX2Fic19zeW50aGV0aWMgPSBtZWFuKGFicyhzeW50aGV0aWNfcikpCiAgICApCikKCmthYmxlKHN1bW1hcnlfc3RhdHMsIGRpZ2l0cyA9IDMsIGNhcHRpb24gPSAiU3VtbWFyeSBzdGF0aXN0aWNzIGZvciBzeW50aGV0aWMgY29ycmVsYXRpb25zIikKYGBgCgojIyBXaXRoaW4gdnMuIEFjcm9zcyBJbnN0cnVtZW50IEFuYWx5c2lzCgpUaGUgcGVyLWluc3RydW1lbnQgY2VudGVyaW5nIGxpa2VseSBkcm9wcyBhY2N1cmFjeSBiZWNhdXNlIGl0IHJlbW92ZXMgdmFsaWQgaW5mb3JtYXRpb24gYWJvdXQgc2ltaWxhcml0aWVzIGJldHdlZW4gaW5zdHJ1bWVudHMuIFBlbGxlcnQgZXQgYWwuIGFwcGxpZWQgdGhpcyBtZXRob2QgdG8gYSBzaW5nbGUgcXVlc3Rpb25uYWlyZSAoUFZRLVJSKSwgYnV0IGhlcmUgd2UgaGF2ZSBpdGVtcyBmcm9tIG11bHRpcGxlIGluc3RydW1lbnRzIHdoZXJlIGNyb3NzLWluc3RydW1lbnQgc2ltaWxhcml0aWVzIGFyZSBtZWFuaW5nZnVsLgoKTGV0J3MgZXhhbWluZSBhY2N1cmFjeSBzZXBhcmF0ZWx5IGZvciB3aXRoaW4taW5zdHJ1bWVudCBhbmQgYWNyb3NzLWluc3RydW1lbnQgaXRlbSBwYWlyczoKCmBgYHtyIHdpdGhpbi1hY3Jvc3MtYW5hbHlzaXN9CiMgQWRkIGluc3RydW1lbnQgaW5mb3JtYXRpb24gdG8gZWFjaCBwYWlyCmFkZF9pbnN0cnVtZW50X2luZm8gPC0gZnVuY3Rpb24ocGFpcnMsIG1hcHBpbmcpIHsKICBwYWlycyAlPiUKICAgIGxlZnRfam9pbihtYXBwaW5nICU+JSBzZWxlY3QodmFyaWFibGVfMSA9IHZhcmlhYmxlLCBpbnN0cnVtZW50XzEgPSBpbnN0cnVtZW50KSwgCiAgICAgICAgICAgICAgYnkgPSAidmFyaWFibGVfMSIpICU+JQogICAgbGVmdF9qb2luKG1hcHBpbmcgJT4lIHNlbGVjdCh2YXJpYWJsZV8yID0gdmFyaWFibGUsIGluc3RydW1lbnRfMiA9IGluc3RydW1lbnQpLCAKICAgICAgICAgICAgICBieSA9ICJ2YXJpYWJsZV8yIikgJT4lCiAgICBtdXRhdGUoc2FtZV9pbnN0cnVtZW50ID0gaW5zdHJ1bWVudF8xID09IGluc3RydW1lbnRfMikKfQoKIyBBZGQgaW5zdHJ1bWVudCBpbmZvIHRvIGFsbCBkYXRhc2V0cwpwdF9vcmlnaW5hbF9wYWlyc19pbnN0ciA8LSBhZGRfaW5zdHJ1bWVudF9pbmZvKHB0X29yaWdpbmFsX3BhaXJzLCBycl92YWxpZGF0aW9uX21hcHBpbmdfZGF0YSkKcHRfY2VudGVyZWRfZ2xvYmFsX3BhaXJzX2luc3RyIDwtIGFkZF9pbnN0cnVtZW50X2luZm8ocHRfY2VudGVyZWRfZ2xvYmFsX3BhaXJzLCBycl92YWxpZGF0aW9uX21hcHBpbmdfZGF0YSkKcHRfY2VudGVyZWRfaW5zdHJ1bWVudF9wYWlyc19pbnN0ciA8LSBhZGRfaW5zdHJ1bWVudF9pbmZvKHB0X2NlbnRlcmVkX2luc3RydW1lbnRfcGFpcnMsIHJyX3ZhbGlkYXRpb25fbWFwcGluZ19kYXRhKQoKZnRfb3JpZ2luYWxfcGFpcnNfaW5zdHIgPC0gYWRkX2luc3RydW1lbnRfaW5mbyhmdF9vcmlnaW5hbF9wYWlycywgcnJfdmFsaWRhdGlvbl9tYXBwaW5nX2RhdGEpCmZ0X2NlbnRlcmVkX2dsb2JhbF9wYWlyc19pbnN0ciA8LSBhZGRfaW5zdHJ1bWVudF9pbmZvKGZ0X2NlbnRlcmVkX2dsb2JhbF9wYWlycywgcnJfdmFsaWRhdGlvbl9tYXBwaW5nX2RhdGEpCmZ0X2NlbnRlcmVkX2luc3RydW1lbnRfcGFpcnNfaW5zdHIgPC0gYWRkX2luc3RydW1lbnRfaW5mbyhmdF9jZW50ZXJlZF9pbnN0cnVtZW50X3BhaXJzLCBycl92YWxpZGF0aW9uX21hcHBpbmdfZGF0YSkKCiMgQ2FsY3VsYXRlIGFjY3VyYWN5IHdpdGhpbiBhbmQgYWNyb3NzIGluc3RydW1lbnRzCmFjY3VyYWN5X2J5X2NvbnRleHQgPC0gYmluZF9yb3dzKAogICMgUHJlLXRyYWluZWQKICBwdF9vcmlnaW5hbF9wYWlyc19pbnN0ciAlPiUgZ3JvdXBfYnkoc2FtZV9pbnN0cnVtZW50KSAlPiUKICAgIHN1bW1hcmlzZShicm9vbTo6dGlkeShjb3IudGVzdChlbXBpcmljYWxfciwgc3ludGhldGljX3IpKSwgbl9wYWlycyA9IG4oKSkgJT4lCiAgICBtdXRhdGUobW9kZWwgPSAiUHJlLXRyYWluZWQiLCBtZXRob2QgPSAiT3JpZ2luYWwiKSwKICBwdF9jZW50ZXJlZF9nbG9iYWxfcGFpcnNfaW5zdHIgJT4lIGdyb3VwX2J5KHNhbWVfaW5zdHJ1bWVudCkgJT4lCiAgICBzdW1tYXJpc2UoYnJvb206OnRpZHkoY29yLnRlc3QoZW1waXJpY2FsX3IsIHN5bnRoZXRpY19yKSksIG5fcGFpcnMgPSBuKCkpICU+JQogICAgbXV0YXRlKG1vZGVsID0gIlByZS10cmFpbmVkIiwgbWV0aG9kID0gIkdsb2JhbCBtZWFuLWNlbnRlcmVkIiksCiAgcHRfY2VudGVyZWRfaW5zdHJ1bWVudF9wYWlyc19pbnN0ciAlPiUgZ3JvdXBfYnkoc2FtZV9pbnN0cnVtZW50KSAlPiUKICAgIHN1bW1hcmlzZShicm9vbTo6dGlkeShjb3IudGVzdChlbXBpcmljYWxfciwgc3ludGhldGljX3IpKSwgbl9wYWlycyA9IG4oKSkgJT4lCiAgICBtdXRhdGUobW9kZWwgPSAiUHJlLXRyYWluZWQiLCBtZXRob2QgPSAiUGVyLWluc3RydW1lbnQgbWVhbi1jZW50ZXJlZCIpLAogIAogICMgRmluZS10dW5lZAogIGZ0X29yaWdpbmFsX3BhaXJzX2luc3RyICU+JSBncm91cF9ieShzYW1lX2luc3RydW1lbnQpICU+JQogICAgc3VtbWFyaXNlKGJyb29tOjp0aWR5KGNvci50ZXN0KGVtcGlyaWNhbF9yLCBzeW50aGV0aWNfcikpLCBuX3BhaXJzID0gbigpKSAlPiUKICAgIG11dGF0ZShtb2RlbCA9ICJGaW5lLXR1bmVkIiwgbWV0aG9kID0gIk9yaWdpbmFsIiksCiAgZnRfY2VudGVyZWRfZ2xvYmFsX3BhaXJzX2luc3RyICU+JSBncm91cF9ieShzYW1lX2luc3RydW1lbnQpICU+JQogICAgc3VtbWFyaXNlKGJyb29tOjp0aWR5KGNvci50ZXN0KGVtcGlyaWNhbF9yLCBzeW50aGV0aWNfcikpLCBuX3BhaXJzID0gbigpKSAlPiUKICAgIG11dGF0ZShtb2RlbCA9ICJGaW5lLXR1bmVkIiwgbWV0aG9kID0gIkdsb2JhbCBtZWFuLWNlbnRlcmVkIiksCiAgZnRfY2VudGVyZWRfaW5zdHJ1bWVudF9wYWlyc19pbnN0ciAlPiUgZ3JvdXBfYnkoc2FtZV9pbnN0cnVtZW50KSAlPiUKICAgIHN1bW1hcmlzZShicm9vbTo6dGlkeShjb3IudGVzdChlbXBpcmljYWxfciwgc3ludGhldGljX3IpKSwgbl9wYWlycyA9IG4oKSkgJT4lCiAgICBtdXRhdGUobW9kZWwgPSAiRmluZS10dW5lZCIsIG1ldGhvZCA9ICJQZXItaW5zdHJ1bWVudCBtZWFuLWNlbnRlcmVkIikKKSAlPiUKICBzZWxlY3QobW9kZWwsIG1ldGhvZCwgc2FtZV9pbnN0cnVtZW50LCBhY2N1cmFjeSA9IGVzdGltYXRlLCBjb25mLmxvdywgY29uZi5oaWdoLCBuX3BhaXJzKQoKIyBGb3JtYXQgZm9yIGRpc3BsYXkKYWNjdXJhY3lfYnlfY29udGV4dCAlPiUKICBtdXRhdGUoY29udGV4dCA9IGlmX2Vsc2Uoc2FtZV9pbnN0cnVtZW50LCAiV2l0aGluIGluc3RydW1lbnQiLCAiQWNyb3NzIGluc3RydW1lbnRzIiksCiAgICAgICAgIGFjY3VyYWN5X2NpID0gc3ByaW50ZigiJS4zZiBbJS4zZiwgJS4zZl0iLCBhY2N1cmFjeSwgY29uZi5sb3csIGNvbmYuaGlnaCkpICU+JQogIHNlbGVjdChtb2RlbCwgbWV0aG9kLCBjb250ZXh0LCBhY2N1cmFjeV9jaSwgbl9wYWlycykgJT4lCiAga2FibGUoY2FwdGlvbiA9ICJBY2N1cmFjeSBmb3Igd2l0aGluLWluc3RydW1lbnQgdnMuIGFjcm9zcy1pbnN0cnVtZW50IGl0ZW0gcGFpcnMiKQpgYGAKCiMjIyBJbnRlcnByZXRhdGlvbgoKKipQZXItaW5zdHJ1bWVudCBtZWFuLWNlbnRlcmluZyBkYW1hZ2VzIGFjY3VyYWN5IGJvdGggd2l0aGluIEFORCBhY3Jvc3MgaW5zdHJ1bWVudHMqKiwgc3VnZ2VzdGluZyB0aGF0IHdoYXQgUGVsbGVydCBldCBhbC4gY2hhcmFjdGVyaXplZCBhcyAiY29tbW9uIGxpbmd1aXN0aWMgZmVhdHVyZXMiIGFuZCAidW5uZWVkZWQgaW5mb3JtYXRpb24iIGFjdHVhbGx5IGNvbnRhaW5zIHZhbGlkIHBzeWNob2xvZ2ljYWwgc2lnbmFsLgoKS2V5IGZpbmRpbmdzOgoKMS4gKipBY3Jvc3MtaW5zdHJ1bWVudCBwYWlycyoqOiBQZXItaW5zdHJ1bWVudCBjZW50ZXJpbmcgcmVtb3ZlcyBtZWFuaW5nZnVsIHNlbWFudGljIGRpZmZlcmVuY2VzIGJldHdlZW4gaW5zdHJ1bWVudHMgKGUuZy4sIGRlcHJlc3Npb24gaXRlbXMgdnMuIHBlcnNvbmFsaXR5IGl0ZW1zIGhhdmUgZ2VudWluZWx5IGRpZmZlcmVudCBjb250ZW50KQoKMi4gKipXaXRoaW4taW5zdHJ1bWVudCBwYWlycyoqOiBFdmVuIGhlcmUsIHBlci1pbnN0cnVtZW50IGNlbnRlcmluZyByZWR1Y2VzIGFjY3VyYWN5LCBzdWdnZXN0aW5nIHRoZSAicXVlc3Rpb25uYWlyZSBlbWJlZGRpbmciIChtZWFuIHZlY3RvcikgY2FwdHVyZXMgdmFsaWQgc2hhcmVkIGNvbnRlbnQgcmF0aGVyIHRoYW4gbWVyZSBsaW5ndWlzdGljIGFydGlmYWN0cwoKKipXaHkgbWlnaHQgdGhlIGluc3RydW1lbnQgbWVhbiBjb250YWluIHNpZ25hbCByYXRoZXIgdGhhbiBub2lzZT8qKgoKLSBJdGVtcyB3aXRoaW4gYSBxdWVzdGlvbm5haXJlIHNoYXJlIHN1YnN0YW50aXZlIHBzeWNob2xvZ2ljYWwgY29udGVudCAoZS5nLiwgYWxsIGRlcHJlc3Npb24gaXRlbXMgcmVmZXJlbmNlIG5lZ2F0aXZlIGFmZmVjdCkKLSBUaGlzIHNoYXJlZCBjb250ZW50IGNyZWF0ZXMgbWVhbmluZ2Z1bCBjb3JyZWxhdGlvbnMgdGhhdCB0aGUgbW9kZWwgc2hvdWxkIGRldGVjdAotIFJlbW92aW5nIGl0IGxlYXZlcyBvbmx5IGl0ZW0tc3BlY2lmaWMgZGV2aWF0aW9ucywgZGlzY2FyZGluZyB2YWxpZCBpbmZvcm1hdGlvbiBhYm91dCBob3cgaXRlbXMgcmVsYXRlIHRvIHRoZSBjb25zdHJ1Y3QKCioqSW1wbGljYXRpb25zKio6IFRoZSBQZWxsZXJ0IGV0IGFsLiBhcHByb2FjaCBtYXkgYmUgcHJvYmxlbWF0aWMgZXZlbiBmb3Igc2luZ2xlLXF1ZXN0aW9ubmFpcmUgYXBwbGljYXRpb25zIGlmIHRoZSBxdWVzdGlvbm5haXJlIGhhcyBjb2hlcmVudCBzdWJzdGFudGl2ZSBjb250ZW50LiBUaGUgImhpZ2gtZGltZW5zaW9uYWwgbGluZ3Vpc3RpYyBmZWF0dXJlcyIgdGhleSByZW1vdmUgbWF5IGFjdHVhbGx5IGJlIGNhcHR1cmluZyByZWFsIHBzeWNob2xvZ2ljYWwgc2ltaWxhcml0aWVzLgoKU2luY2Ugb3VyIHZhbGlkYXRpb24gc3R1ZHkgaW5jbHVkZXMgYHIgcm91bmQobWVhbighcHRfb3JpZ2luYWxfcGFpcnNfaW5zdHIkc2FtZV9pbnN0cnVtZW50KSoxMDAsIDEpYCUgY3Jvc3MtaW5zdHJ1bWVudCBwYWlycywgdGhlIG92ZXJhbGwgYWNjdXJhY3kgZHJvcHMgc3Vic3RhbnRpYWxseSwgYnV0IHRoZSB3aXRoaW4taW5zdHJ1bWVudCBkZWdyYWRhdGlvbiBpcyBlcXVhbGx5IGNvbmNlcm5pbmcuCmBgYAoKIyMgU3VtbWFyeSBvZiBGaW5kaW5ncyAKClBlbGxlcnQgZXQgYWwuICgyMDI0KSBwcm9wb3NlICJTdXJ2ZXkgYW5kIFF1ZXN0aW9ubmFpcmUgSXRlbSBFbWJlZGRpbmdzIERpZmZlcmVudGlhbHMiIChTUXVJRCksIGEgbWV0aG9kIGZvciBpbXByb3ZpbmcgdGhlIHF1YWxpdHkgb2Ygc2VtYW50aWMgZW1iZWRkaW5ncyBmb3IgcHN5Y2hvbWV0cmljIGl0ZW1zLiBUaGVpciBhcHByb2FjaCBpbnZvbHZlcyBzdWJ0cmFjdGluZyB0aGUgbWVhbiBlbWJlZGRpbmcgdmVjdG9yIGFjcm9zcyBhbGwgcXVlc3Rpb25uYWlyZSBpdGVtcyBmcm9tIGVhY2ggaW5kaXZpZHVhbCBpdGVtIGVtYmVkZGluZy4gVGhlIGF1dGhvcnMgZnJhbWUgdGhpcyBvcGVyYXRpb24gYXMgcmVtb3ZpbmcgImNvbW1vbiBsaW5ndWlzdGljIGZlYXR1cmVzIG9mIG5hdHVyYWwgbGFuZ3VhZ2UgdXNlIiB0aGF0IGFydGlmaWNpYWxseSBpbmZsYXRlIHNpbWlsYXJpdGllcyBiZXR3ZWVuIGl0ZW1zIGFuZCBvYnNjdXJlIG1lYW5pbmdmdWwgcHN5Y2hvbG9naWNhbCBkaWZmZXJlbmNlcy4gVGhleSByZXBvcnQgc3Vic3RhbnRpYWwgaW1wcm92ZW1lbnRzIGluIHRoZWlyIHZhbGlkYXRpb24gc3R1ZHkgdXNpbmcgdGhlIDU3LWl0ZW0gUG9ydHJhaXQgVmFsdWVzIFF1ZXN0aW9ubmFpcmUtUmV2aXNlZCAoUFZRLVJSKSwgcGFydGljdWxhcmx5IGZvciBwcmUtdHJhaW5lZCBtb2RlbHMuCgpXZSB0ZXN0ZWQgd2hldGhlciB0aGlzIG1ldGhvZCBnZW5lcmFsaXplcyB0byBvdXIgdmFsaWRhdGlvbiBkYXRhc2V0LCB3aGljaCBjb250YWlucyAyNDYgaXRlbXMgZnJvbSBtdWx0aXBsZSBwc3ljaG9sb2dpY2FsIGluc3RydW1lbnRzLiBXZSBpbXBsZW1lbnRlZCB0d28gdmFyaWFudHMgb2YgdGhlIG1ldGhvZDogZ2xvYmFsIG1lYW4tY2VudGVyaW5nIChzdWJ0cmFjdGluZyB0aGUgbWVhbiBhY3Jvc3MgYWxsIDI0NiBpdGVtcykgYW5kIHBlci1pbnN0cnVtZW50IG1lYW4tY2VudGVyaW5nIChzdWJ0cmFjdGluZyB0aGUgaW5zdHJ1bWVudC1zcGVjaWZpYyBtZWFuIGZyb20gaXRlbXMgd2l0aGluIGVhY2ggcXVlc3Rpb25uYWlyZSwgYXMgUGVsbGVydCBldCBhbC4gYWN0dWFsbHkgZGlkIHdpdGggdGhlaXIgc2luZ2xlLXF1ZXN0aW9ubmFpcmUgZGF0YXNldCkuCgpUaGUgZW1waXJpY2FsIHJlc3VsdHMgcmV2ZWFsIGEgc3RyaWtpbmcgcGF0dGVybi4gRm9yIHRoZSBwcmUtdHJhaW5lZCBTQkVSVCBtb2RlbCwgZ2xvYmFsIG1lYW4tY2VudGVyaW5nIHByb2R1Y2VzIGEgbW9kZXN0IGltcHJvdmVtZW50IGluIGFjY3VyYWN5IGZyb20gMC4zMDIgdG8gMC4zNDAgKGJ1dCB0aGUgZ3JhcGggc3RpbGwgbG9va3MgY3JvaXNzYW50IHNoYXBlZCwgc28gaXQgZG9lcyBub3Qgc29sdmUgdGhlIHByb2JsZW0gd2l0aCBuZWdhdGl2ZSBjb3JyZWxhdGlvbnMpLiBIb3dldmVyLCBmb3IgdGhlIGZpbmUtdHVuZWQgbW9kZWwsIG1lYW4tY2VudGVyaW5nIGNvbnNpc3RlbnRseSBkZWdyYWRlcyBwZXJmb3JtYW5jZS4gR2xvYmFsIG1lYW4tY2VudGVyaW5nIHJlZHVjZXMgYWNjdXJhY3kgZnJvbSAwLjU3MCB0byAwLjU1MSwgd2hpbGUgcGVyLWluc3RydW1lbnQgbWVhbi1jZW50ZXJpbmcgcmVkdWNlcyBpdCBmdXJ0aGVyIHRvIDAuMjk1LiBNb3N0IGNyaXRpY2FsbHksIHdoZW4gZXhhbWluaW5nIGl0ZW0gcGFpcnMgd2l0aGluIHRoZSBzYW1lIGluc3RydW1lbnQsIHBlci1pbnN0cnVtZW50IG1lYW4tY2VudGVyaW5nIHJlZHVjZXMgYWNjdXJhY3kgZnJvbSBhcHByb3hpbWF0ZWx5IDAuNTQgdG8gMC4zOC4gVGhpcyB3aXRoaW4taW5zdHJ1bWVudCBkZWdyYWRhdGlvbiBkaXJlY3RseSBjb250cmFkaWN0cyB0aGUgaW50ZXJwcmV0YXRpb24gdGhhdCB0aGUgaW5zdHJ1bWVudC1sZXZlbCBtZWFuIGVtYmVkZGluZyByZXByZXNlbnRzIHJlbW92YWJsZSBsaW5ndWlzdGljIG5vaXNlLgoKVGhlIHRoZW9yZXRpY2FsIGlzc3VlIGJlY29tZXMgY2xlYXIgd2hlbiBjb25zaWRlcmluZyB3aGF0IGl0ZW1zIHdpdGhpbiBhIHdlbGwtZGVzaWduZWQgcHN5Y2hvbG9naWNhbCBpbnN0cnVtZW50IGFjdHVhbGx5IHNoYXJlLiBJdGVtcyBtZWFzdXJpbmcgZGVwcmVzc2lvbiwgZm9yIGV4YW1wbGUsIHJlZmVyZW5jZSByZWxhdGVkIHBzeWNob2xvZ2ljYWwgc3RhdGVzIHN1Y2ggYXMgc2FkbmVzcywgYW5oZWRvbmlhLCBmYXRpZ3VlLCBhbmQgd29ydGhsZXNzbmVzcy4gVGhlc2UgaXRlbXMgc2hvdWxkIGNvcnJlbGF0ZSBiZWNhdXNlIHRoZXkgbWVhc3VyZSBmYWNldHMgb2YgdGhlIHNhbWUgdW5kZXJseWluZyBjb25zdHJ1Y3QuIFRoZWlyIGVtYmVkZGluZ3MgYXJlIGdlbnVpbmVseSBzaW1pbGFyIGJlY2F1c2UgdGhleSBkZXNjcmliZSByZWxhdGVkIHBzeWNob2xvZ2ljYWwgY29udGVudC4gVGhlIGluc3RydW1lbnQtbGV2ZWwgbWVhbiBlbWJlZGRpbmcgY2FwdHVyZXMgdGhpcyBzaGFyZWQgY29uc3RydWN0LWxldmVsIHNlbWFudGljIGNvbnRlbnQsIG5vdCBtZXJlbHkgc3VwZXJmaWNpYWwgbGluZ3Vpc3RpYyBmZWF0dXJlcy4KCldoZW4gdGhlIGluc3RydW1lbnQgbWVhbiBpcyBzdWJ0cmFjdGVkIGZyb20gZWFjaCBpdGVtIGVtYmVkZGluZywgdGhlIG9wZXJhdGlvbiByZW1vdmVzIHRoZSBzZW1hbnRpYyBjb3JlIHRoYXQgZGVmaW5lcyB3aGF0IHRoZSBpbnN0cnVtZW50IG1lYXN1cmVzLiBXaGF0IHJlbWFpbnMgYXJlIG9ubHkgaXRlbS1zcGVjaWZpYyBkZXZpYXRpb25zIGZyb20gdGhlIGNvbnN0cnVjdCBtZWFuLiBXaGlsZSB0aGlzIG1pZ2h0IHByZXNlcnZlIHNvbWUgaW5mb3JtYXRpb24gYWJvdXQgaG93IGl0ZW1zIGRpZmZlciBpbiB0aGVpciBwYXJ0aWN1bGFyIGluc3RhbnRpYXRpb24gb2YgdGhlIGNvbnN0cnVjdCwgaXQgZGVzdHJveXMgaW5mb3JtYXRpb24gYWJvdXQgaG93IHN0cm9uZ2x5IGVhY2ggaXRlbSByZWxhdGVzIHRvIHRoZSBvdmVyYWxsIGNvbnN0cnVjdC4gRm9yIGEgZmluZS10dW5lZCBtb2RlbCB0aGF0IGhhcyBsZWFybmVkIHRvIGVuY29kZSBwc3ljaG9sb2dpY2FsIGNvbnN0cnVjdHMgZWZmaWNpZW50bHksIHRoaXMgcmVtb3ZhbCBvZiBzaGFyZWQgY29uc3RydWN0IGluZm9ybWF0aW9uIGRpcmVjdGx5IGRhbWFnZXMgdGhlIG1vZGVsJ3MgYWJpbGl0eSB0byBwcmVkaWN0IGVtcGlyaWNhbCBpdGVtIGNvcnJlbGF0aW9ucy4KClRoZSBkaWZmZXJlbnRpYWwgZWZmZWN0cyBhY3Jvc3MgbW9kZWxzIHByb3ZpZGUgYWRkaXRpb25hbCBpbnNpZ2h0LiBUaGUgcHJlLXRyYWluZWQgU0JFUlQgbW9kZWwgYmVuZWZpdHMgc2xpZ2h0bHkgZnJvbSBnbG9iYWwgbWVhbi1jZW50ZXJpbmcsIGxpa2VseSBiZWNhdXNlIGl0IGRvZXMgY29udGFpbiBzdWJzdGFudGlhbCBnZW5lcmljIGxpbmd1aXN0aWMgcGF0dGVybnMgdGhhdCBoYXBwZW4gdG8gYmUgY29uc2lzdGVudCBhY3Jvc3Mgc3VydmV5IGl0ZW1zIGJ1dCB1bnJlbGF0ZWQgdG8gcHN5Y2hvbG9naWNhbCBjb250ZW50LiBUaGUgZmluZS10dW5lZCBtb2RlbCwgaGF2aW5nIGxlYXJuZWQgdG8gdXNlIHRoZSBlbWJlZGRpbmcgc3BhY2Ugc3BlY2lmaWNhbGx5IGZvciBwc3ljaG9sb2dpY2FsIHNpbWlsYXJpdHksIGVuY29kZXMgbGVzcyBnZW5lcmljIGxpbmd1aXN0aWMgbm9pc2UgYW5kIG1vcmUgY29uc3RydWN0LXNwZWNpZmljIGluZm9ybWF0aW9uIGluIGl0cyBzaGFyZWQgZW1iZWRkaW5ncy4gUmVtb3ZpbmcgdGhlIG1lYW4gdGhlcmVmb3JlIGRhbWFnZXMgdGhlIGZpbmUtdHVuZWQgbW9kZWwgbW9yZSBzZXZlcmVseS4KClRoZXNlIGZpbmRpbmdzIHN1Z2dlc3QgdGhhdCBQZWxsZXJ0IGV0IGFsLidzIHN1Y2Nlc3MgbWF5IG5vdCByZWZsZWN0IGEgZ2VuZXJhbCBwcmluY2lwbGUgYWJvdXQgcmVtb3ZpbmcgbGluZ3Vpc3RpYyBhcnRpZmFjdHMgZnJvbSBwc3ljaG9sb2dpY2FsIGVtYmVkZGluZ3MuIEluc3RlYWQsIHRoZWlyIG1ldGhvZCBtYXkgaGF2ZSBiZWVuIGVmZmVjdGl2ZSBmb3IgdGhlaXIgc3BlY2lmaWMgY29tYmluYXRpb24gb2YgYSBwcmUtdHJhaW5lZCBtb2RlbCBhbmQgYSBzaW5nbGUsIGhpZ2hseSBjb2hlcmVudCBxdWVzdGlvbm5haXJlLiBUaGUgbWV0aG9kIGZhaWxzIHdoZW4gYXBwbGllZCB0byBhIGZpbmUtdHVuZWQgbW9kZWwgb3IgdG8gYSBkaXZlcnNlIGNvbGxlY3Rpb24gb2YgaW5zdHJ1bWVudHMsIHByZWNpc2VseSBiZWNhdXNlIGl0IHJlbW92ZXMgdmFsaWQgcHN5Y2hvbG9naWNhbCBzaWduYWwgcmF0aGVyIHRoYW4gbWVyZSBsaW5ndWlzdGljIG5vaXNlLiBSZXNlYXJjaGVycyBzaG91bGQgYmUgY2F1dGlvdXMgYWJvdXQgYXBwbHlpbmcgdGhpcyBwcmVwcm9jZXNzaW5nIHN0ZXAsIHBhcnRpY3VsYXJseSB3aGVuIHdvcmtpbmcgd2l0aCBtb2RlbHMgdGhhdCBoYXZlIGJlZW4gdHJhaW5lZCBvbiBwc3ljaG9sb2dpY2FsIGNvbnRlbnQgb3Igd2hlbiBhbmFseXppbmcgbXVsdGlwbGUgaW5zdHJ1bWVudHMgd2hlcmUgY29uc3RydWN0LWxldmVsIGRpZmZlcmVuY2VzIGNvbnRhaW4gbWVhbmluZ2Z1bCBpbmZvcm1hdGlvbi4K</div>
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeSourceEmbed("pellert.Rmd");
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
