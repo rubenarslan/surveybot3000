@@ -386,6 +386,7 @@ ggplot(aes(x = domain, r, ymin = conf.low, ymax = conf.high, shape = kind, fill 
   annotate("text_repel", label = "across domains", x = 3.15, y = .65, force = 2, hjust = -.15, vjust = -2) +
   geom_text(aes(label = sprintf("%.2f", r), hjust = if_else(kind == "within", 1.3, -0.3)), vjust = -0.4, size = 3, position = position_dodge(width = dodge))
 ggsave("Figure_rr_domain.png", width = 6, height = 5)
+ggsave("Figure_rr_domain.pdf", width = 6, height = 5)
 ```
 
 
@@ -817,13 +818,19 @@ exclusion_criteria %>%
     select(`exclusion criteria`, model, kind, accuracy, conf.low, conf.high, `max N`) %>% 
   knitr::kable(digits = 2, caption = "Accuracy when human data is filtered by different exclusion criteria", format = "markdown")
 
+
 exclusion_criteria %>% 
   mutate(`exclusion criteria` = fct_rev(fct_inorder(str_c(str_sub(`exclusion criteria`, 1, coalesce(str_locate(`exclusion criteria`, ":")[, 1]-1, -1)),", n=", `max N`)))) %>% 
-ggplot(aes(x = `exclusion criteria`, accuracy, ymin = conf.low, ymax = conf.high, color = kind)) +
+
+ggplot(aes(y = `exclusion criteria`, x= accuracy, xmin = conf.low, xmax = conf.high, color = kind)) +
   geom_pointrange() + 
-  scale_color_viridis_d(end = 0.7) +
-  geom_text(aes(label = sprintf("%.2f", accuracy)), vjust = -1) +
-  coord_flip()
+  scale_color_viridis_d("Type of correlation", end = 0.7) +
+  geom_text(aes(label = sprintf("%.2f", accuracy)), vjust = -1, show.legend = F) +
+  xlab("Accuracy") +
+  ylab("Exclusion criteria") +
+  theme(legend.position = c(.25,0.9), legend.background = element_rect(linetype = "solid", color = 'gray', linewidth = 0.4))
+ggsave("Figure_exclusion.png", height = 5, width = 7)
+ggsave("Figure_exclusion.pdf", height = 5, width = 7)
 ```
 
 

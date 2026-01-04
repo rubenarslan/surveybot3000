@@ -1,0 +1,107 @@
+---
+title: "Precision simulations"
+author: "Ruben Arslan"
+date: "2023-11-07"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+
+The following precision simulations all follow the same structure.
+
+- We randomly redraw from our holdout data to get realistic distributions
+  of empirical estimates. SEs are estimated based on our planned N of 400.
+- We repeat this random drawing process many times.
+- We adjust for sampling error/the standard error of the empirical estimate to get the semi-latent accuracy.
+- The target quantity is the average standard error of the semi-latent accuracy with which the synthetic estimates predicts the empirical estimates. We also report the maximal standard error across simulations.
+
+We begin with item correlations, then reliabilities, then scale correlations.
+
+```{r warning=F,message=F}
+knitr::opts_chunk$set(echo = TRUE, error = T, warning = F, message = F)
+
+# Libraries and Settings
+
+# Libs ---------------------------
+library(tidyverse)
+library(arrow)
+library(glue)
+library(psych)
+library(lavaan)
+library(ggplot2)
+library(plotly)
+library(gridExtra)
+library(semTools)
+library(semPlot)
+
+model_name = "ItemSimilarityTraining-20240502-trial12"
+#model_name = "item-similarity-20231018-122504"
+pretrained_model_name = "all-mpnet-base-v2"
+
+data_path = glue("./")
+pretrained_data_path = glue("./")
+
+set.seed(42)
+
+number_of_items <- 300
+combinations_items <- choose(number_of_items, 2)
+planned_N <- 1200
+```
+
+
+## Precision simulation for synthetic inter-item correlations
+```{r}
+holdout <- arrow::read_feather(file = file.path(data_path, glue("data/intermediate/{model_name}.raw.osf-bainbridge-2021-s2-0.item_correlations.feather")))
+
+holdout_mapping_data = arrow::read_feather(
+  file = file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.mapping2.feather"))
+) %>%
+  rename(scale_0 = scale0,
+         scale_1 = scale1)
+
+scales <- arrow::read_feather(file.path(data_path, glue("{model_name}.raw.osf-bainbridge-2021-s2-0.scales.feather"))
+)
+
+holdout_llm <- holdout %>%
+  left_join(holdout_mapping_data %>% select(variable_1 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1)) %>%
+  left_join(holdout_mapping_data %>% select(variable_2 = variable, InstrumentA = instrument, ScaleA = scale_0, SubscaleA = scale_1))
+
+sim_results <- tibble()
+library(lavaan)
+
+for(i in 1:500) {
+  items <- holdout %>% select(variable_1) %>% distinct() %>% sample_n(number_of_items) %>% pull(variable_1)
+
+  subset <- holdout %>% filter(variable_1 %in% items, variable_2 %in% items)
+
+  N <- planned_N
+  subset <- subset %>% mutate(se = (1 - empirical_r^2)/sqrt(N - 3))
+  se2 <- mean(subset$se^2)
+
+  r <- broom::tidy(cor.test(subset$empirical_r, subset$synthetic_r))
+
+  model <- paste0('
+    # Latent variables
+    PearsonLatent =~ 1*empirical_r
+
+    # Fixing error variances based on known standard errors
+    empirical_r ~~ ',se2,'*empirical_r
+
+    # Relationship between latent variables
+    PearsonLatent ~~ synthetic_r
+  ')
+
+  fit <- sem(model, data = subset)
+
+  sim_results <- bind_rows(sim_results,
+    standardizedsolution(fit) %>% filter(lhs == "PearsonLatent", rhs ==  "synthetic_r")
+  )
+}
+
+sim_results %>% summarise(semi_latent_r = mean(est.std), mean_se = sqrt(mean(se^2)), max_se = max(se)) %>% 
+  knitr::kable()
+```
+
+
