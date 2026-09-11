@@ -182,7 +182,7 @@ bind_rows(
     mutate(model = "fine-tuned", kind = "latent outcome (Bayesian EIV)") %>% 
     select(model, kind, accuracy = latent_r, conf.low = .lower, conf.high = .upper)
   ) %>% 
-  kable(digits = 2, caption = str_c("Accuracy for k=",nrow(rr_validation_llm)," item pairs (",n_distinct(c(rr_validation_llm$variable_1, rr_validation_llm$variable_1))," items) across language models and methods"))
+  kable(digits = 2, caption = str_c("Accuracy for k=",nrow(rr_validation_llm)," item pairs (",n_distinct(c(rr_validation_llm$variable_1, rr_validation_llm$variable_2))," items) across language models and methods"))
 ```
 
 
