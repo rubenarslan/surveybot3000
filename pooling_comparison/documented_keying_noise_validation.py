@@ -76,7 +76,7 @@ def main():
         )
         .reset_index()
     )
-    summary.to_csv(os.path.join(OUT_NOISE, "documented_only_validation.csv"), index=False)
+    summary.round(2).to_csv(os.path.join(OUT_NOISE, "documented_only_validation.csv"), index=False)
 
     pd.set_option("display.width", 200)
     print(f"Variant B (documented) on the validation study, {N_DRAWS} draws per cell, mean [2.5%, 97.5%]:\n")
@@ -85,9 +85,9 @@ def main():
         g = summary[summary.regime == regime]
         for _, r in g.iterrows():
             print(
-                f"  u = {r.u:.2f}   r = {r.pearson_r:.3f} [{r.pearson_r_lo:.3f}, {r.pearson_r_hi:.3f}]   "
-                f"MAE = {r.mae:.3f} [{r.mae_lo:.3f}, {r.mae_hi:.3f}]   "
-                f"sign err = {r.sign_error_rate:.3f} [{r.sign_error_lo:.3f}, {r.sign_error_hi:.3f}]"
+                f"  u = {r.u:.2f}   r = {r.pearson_r:.2f} [{r.pearson_r_lo:.2f}, {r.pearson_r_hi:.2f}]   "
+                f"MAE = {r.mae:.2f} [{r.mae_lo:.2f}, {r.mae_hi:.2f}]   "
+                f"sign err = {r.sign_error_rate:.2f} [{r.sign_error_lo:.2f}, {r.sign_error_hi:.2f}]"
             )
         print()
 
