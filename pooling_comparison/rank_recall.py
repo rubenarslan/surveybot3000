@@ -56,7 +56,8 @@ def main():
     rows, md = [], ["# Rank-based recall of related scales (variant B, cross-instrument)", "",
                     "For each query scale, cross-instrument database scales are ranked by |predicted cosine|. "
                     "Each related pair enters twice (once per direction). Chance = expected share under random "
-                    "ordering, min(k, list size) / list size averaged over pairs.", ""]
+                    "ordering, min(k, list size) / list size averaged over pairs; it reaches 1 once k covers the whole list "
+                    "(lists have about 65 to 112 entries). Median rank is kept in rank_recall.csv.", ""]
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -68,13 +69,13 @@ def main():
         md.append("")
         md.append(f"{long['query'].nunique()} query scales, list sizes {int(long.list_size.min())} to {int(long.list_size.max())}.")
         md.append("")
-        hdr = ["threshold", "related pairs", "queries", "median rank", "top 5", "top 10", "top 25", "top 50", "top 100"]
+        hdr = ["threshold", "related pairs", "queries", "top 5", "top 10", "top 25", "top 50", "top 100"]
         lines = ["| " + " | ".join(hdr) + " |", "|" + "|".join(["---"] * len(hdr)) + "|"]
         for t, color in zip(THRESHOLDS, ["#1b6ca8", "#2a9d5c"]):
             rel = long[long.abs_emp >= t]
             s = summarise(rel)
             rows.append(dict(dataset=ds, threshold=t, **s))
-            cells = [f"|r| >= {t:.2f}", str(s["n_related_pairs"]), str(s["n_queries"]), f"{s['median_rank']:.0f}"] + [
+            cells = [f"|r| >= {t:.2f}", str(s["n_related_pairs"]), str(s["n_queries"])] + [
                 f"{s[f'recall_at_{k}']:.2f} (chance {s[f'chance_at_{k}']:.2f})" for k in KS]
             lines.append("| " + " | ".join(cells) + " |")
             # cumulative recall curve vs rank, and chance
@@ -91,6 +92,11 @@ def main():
         ax.set_xlabel("rank k in the query's list (by |predicted cosine|)")
         ax.set_ylabel("cumulative recall of related scales")
         ax.set_xscale("log")
+        from matplotlib.ticker import FixedLocator, FixedFormatter, NullFormatter
+        ticks = [1, 2, 5, 10, 25, 50, 100]
+        ax.xaxis.set_major_locator(FixedLocator(ticks))
+        ax.xaxis.set_major_formatter(FixedFormatter([str(t) for t in ticks]))
+        ax.xaxis.set_minor_formatter(NullFormatter())
         ax.set_ylim(0, 1)
         ax.grid(alpha=0.3)
         ax.set_title(f"Cumulative recall against rank: {ds}")
